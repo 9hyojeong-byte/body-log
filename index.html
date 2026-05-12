@@ -74,8 +74,8 @@
     .rec-desc{font-size:11px;color:var(--500);margin-top:2px;line-height:1.4}
 
     /* inline form */
-    .inline-form{padding:16px 16px 18px}
     .if-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+    .if-save-btn:active{transform:scale(.98)}
     .if-field{display:flex;flex-direction:column;gap:4px}
     .if-field label{font-size:9.5px;font-weight:500;color:var(--400);letter-spacing:.08em;text-transform:uppercase}
     .if-field label em{font-style:normal;text-transform:none;font-size:9px;color:var(--300)}
@@ -88,6 +88,16 @@
     .if-save-btn{width:100%;padding:13px;background:var(--black);color:#fff;border:none;border-radius:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background .15s}
     .if-save-btn:hover{background:var(--800)}
     .if-save-btn:active{transform:scale(.98)}
+
+    /* form toggle bar */
+    .form-toggle-bar{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;cursor:pointer;border-top:1px solid var(--border);user-select:none;transition:background .15s}
+    .form-toggle-bar:hover{background:var(--50)}
+    .form-toggle-bar span:first-child{font-size:13px;font-weight:500;color:var(--700)}
+    .form-toggle-arrow{font-size:18px;color:var(--400);transition:transform .22s;line-height:1;display:inline-block}
+    .form-toggle-arrow.open{transform:rotate(90deg)}
+    /* collapsible form */
+    .inline-form{overflow:hidden;max-height:0;padding-top:0;padding-bottom:0;transition:max-height .28s cubic-bezier(.4,0,.2,1), padding .28s}
+    .inline-form.expanded{max-height:400px;padding:16px 16px 18px}
 
     /* logged state */
     .today-logged{display:flex;align-items:center;justify-content:space-between;padding:16px 18px}
@@ -264,7 +274,11 @@
         </div>
       </div>
 
-      <!-- 인라인 기록 폼 -->
+      <!-- 인라인 기록 폼 (토글) -->
+      <div class="form-toggle-bar" id="formToggleBar" onclick="toggleInlineForm()">
+        <span id="formToggleLabel">체중 기록하기</span>
+        <span class="form-toggle-arrow" id="formToggleArrow">›</span>
+      </div>
       <div class="inline-form" id="inlineForm">
         <div class="if-fields">
           <div class="if-field">
@@ -726,26 +740,43 @@ function renderHome() {
   document.getElementById('recDesc').textContent  = rec.desc;
 
   /* 폼 / 완료 뷰 */
-  const form   = document.getElementById('inlineForm');
-  const logged = document.getElementById('todayLogged');
+  const form      = document.getElementById('inlineForm');
+  const logged    = document.getElementById('todayLogged');
+  const toggleBar = document.getElementById('formToggleBar');
+  const arrow     = document.getElementById('formToggleArrow');
+
   if (entry) {
-    form.style.display   = 'none';
-    logged.style.display = '';
+    // 기록 완료 상태 — 폼·토글바 숨기고 완료 뷰 표시
+    toggleBar.style.display = 'none';
+    form.style.display      = 'none';
+    form.classList.remove('expanded');
+    logged.style.display    = '';
     document.getElementById('tlWeight').innerHTML = entry.weight + '<em>kg</em>';
     const meta = [
-      entry.waist   ? '허리 '    + entry.waist   + 'cm' : '',
-      entry.thigh   ? '허벅지 '  + entry.thigh   + 'cm' : '',
-      entry.bodyfat ? '체지방 '  + entry.bodyfat + '%'  : '',
-      entry.memo    ? '"' + entry.memo + '"'             : '',
+      entry.waist   ? '허리 '   + entry.waist   + 'cm' : '',
+      entry.thigh   ? '허벅지 ' + entry.thigh   + 'cm' : '',
+      entry.bodyfat ? '체지방 ' + entry.bodyfat + '%'  : '',
+      entry.memo    ? '"' + entry.memo + '"'            : '',
     ].filter(Boolean).join(' · ');
     document.getElementById('tlMeta').textContent = meta || '추가 정보 없음';
     document.getElementById('tlEditBtn').onclick = () => openEntry(todayStr);
   } else {
-    form.style.display   = '';
-    logged.style.display = 'none';
+    // 미기록 상태 — 토글바 표시, 황금기면 폼 자동 열기
+    logged.style.display    = 'none';
+    toggleBar.style.display = '';
+    form.style.display      = '';
     ['ifWeight','ifWaist','ifThigh','ifMemo'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    if (phase === 'golden') {
+      form.classList.add('expanded');
+      arrow.classList.add('open');
+      document.getElementById('formToggleLabel').textContent = '체중 기록하기';
+    } else {
+      form.classList.remove('expanded');
+      arrow.classList.remove('open');
+      document.getElementById('formToggleLabel').textContent = '체중 기록하기';
+    }
   }
 
   /* 통계 */
@@ -975,6 +1006,20 @@ function renderCycleTab() {
 }
 
 /* ═══════════ UI HELPERS ═══════════ */
+function toggleInlineForm() {
+  const form  = document.getElementById('inlineForm');
+  const arrow = document.getElementById('formToggleArrow');
+  const isOpen = form.classList.contains('expanded');
+  if (isOpen) {
+    form.classList.remove('expanded');
+    arrow.classList.remove('open');
+  } else {
+    form.classList.add('expanded');
+    arrow.classList.add('open');
+    // 열리면 체중 입력에 포커스
+    setTimeout(() => document.getElementById('ifWeight').focus(), 300);
+  }
+}
 function switchTab(name, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
