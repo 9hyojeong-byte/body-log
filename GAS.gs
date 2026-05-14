@@ -114,7 +114,7 @@ function getOrCreateWeightSheet() {
   let sheet = ss.getSheetByName(SHEET_WEIGHT);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_WEIGHT);
-    const h = ['날짜','체중(kg)','허리(cm)','허벅지(cm)','체지방률(%)','메모','수정일시','생리주기단계'];
+    const h = ['날짜','체중(kg)','허리(cm)','허벅지(cm)','체지방률(%)','메모','수정일시','생리주기단계','UUID'];
     sheet.getRange(1,1,1,h.length).setValues([h])
          .setBackground('#1a1a1a').setFontColor('#ffffff').setFontWeight('bold');
     sheet.setFrozenRows(1);
@@ -139,7 +139,8 @@ function upsertWeight(dateStr, data) {
   const stage    = getCycleStage(dateStr);
   const now      = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
   const row      = [dateStr, data.weight||'', data.waist||'', data.thigh||'',
-                    data.bodyfat||'', data.memo||'', now, stage];
+                    data.bodyfat||'', data.memo||'', now, stage,
+                    data.id || Utilities.getUuid()];
   const existing = findWeightRow(sheet, dateStr);
   if (existing > 0) {
     sheet.getRange(existing,1,1,row.length).setValues([row]);
@@ -161,12 +162,12 @@ function getAllWeight() {
   const sheet = getOrCreateWeightSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return {};
-  const rows = sheet.getRange(2,1,last-1,6).getValues();
+  const rows = sheet.getRange(2,1,last-1,9).getValues();
   const out  = {};
   rows.forEach(r => {
     const d = fmtDate(r[0]);
     if (!d) return;
-    out[d] = { weight: toNum(r[1]), waist: toNum(r[2]), thigh: toNum(r[3]),
+    out[d] = { id: String(r[8]||''), weight: toNum(r[1]), waist: toNum(r[2]), thigh: toNum(r[3]),
                bodyfat: toNum(r[4]), memo: String(r[5]||'') };
   });
   return out;
