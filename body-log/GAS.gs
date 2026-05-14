@@ -8,6 +8,7 @@
  *  ┌──────────────────────────────────────────────────────┐
  *  │ weight_log │ 날짜(PK) | 체중 | 허리 | 허벅지 | ...  │
  *  │ cycle_log  │ id(UUID) | 생리시작일 | 주기 | ...      │
+ *  │ memo       │ 키       | 내용       | 수정일시        │
  *  └──────────────────────────────────────────────────────┘
  *
  *  [설계 원칙]
@@ -28,6 +29,7 @@
  *  CYCLE_ADD       생리 시작일 추가 (UUID 포함)
  *  CYCLE_UPDATE    생리 시작일 수정 (UUID로 행 찾아서 수정)
  *  CYCLE_DELETE    생리 기록 삭제 (UUID 기준)
+ *  MEMO_SAVE       메모 저장/수정 (단일 메모, 덮어쓰기)
  *  SYNC_ALL        앱 전체 데이터 → 시트 일괄 동기화
  *  GET_ALL         시트 전체 데이터 → 앱으로 반환
  * ================================================================
@@ -35,6 +37,7 @@
 
 const SHEET_WEIGHT = 'weight_log';
 const SHEET_CYCLE  = 'cycle_log';
+const SHEET_MEMO   = 'memo';
 const TZ           = Session.getScriptTimeZone();
 
 /* ════════════════════════════════════════
@@ -42,7 +45,7 @@ const TZ           = Session.getScriptTimeZone();
 ════════════════════════════════════════ */
 function doGet(e) {
   try {
-    return respond({ status: 'ok', weight: getAllWeight(), cycles: getAllCycles() });
+    return respond({ status: 'ok', weight: getAllWeight(), cycles: getAllCycles(), memo: getMemo() });
   } catch (err) {
     return respond({ status: 'error', message: err.message });
   }
@@ -88,13 +91,18 @@ function doPost(e) {
         recalcCycles();
         return respond({ status: 'ok', message: data.id + ' 생리 기록 삭제됨' });
 
+      case 'MEMO_SAVE':
+        saveMemoSheet(data.content || '', data.updatedAt || '');
+        return respond({ status: 'ok', message: '메모 저장됨' });
+
       case 'SYNC_ALL':
         syncAllWeight(body.weight || {});
         syncAllCycles(body.cycles || []);
+        if (body.memo) saveMemoSheet(body.memo.content || '', body.memo.updatedAt || '');
         return respond({ status: 'ok', message: '전체 동기화 완료' });
 
       case 'GET_ALL':
-        return respond({ status: 'ok', weight: getAllWeight(), cycles: getAllCycles() });
+        return respond({ status: 'ok', weight: getAllWeight(), cycles: getAllCycles(), memo: getMemo() });
 
       default:
         return respond({ status: 'error', message: '알 수 없는 action: ' + action });
@@ -321,6 +329,58 @@ function syncAllCycles(cyclesArr) {
 }
 
 /* ════════════════════════════════════════
+   MEMO 시트
+   단일 메모 — 키(A열)='memo' 행을 UPSERT
+   컬럼: 키 | 내용 | 수정일시
+════════════════════════════════════════ */
+function getOrCreateMemoSheet() {
+  const ss  = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_MEMO);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_MEMO);
+    const h = ['키','내용','수정일시'];
+    sheet.getRange(1,1,1,h.length).setValues([h])
+         .setBackground('#1a1a1a').setFontColor('#ffffff').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    sheet.setColumnWidth(1,80);
+    sheet.setColumnWidth(2,420);
+    sheet.setColumnWidth(3,160);
+  }
+  return sheet;
+}
+
+function saveMemoSheet(content, updatedAt) {
+  const sheet = getOrCreateMemoSheet();
+  const ts    = updatedAt || Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
+  const last  = sheet.getLastRow();
+  if (last >= 2) {
+    const keys = sheet.getRange(2,1,last-1,1).getValues();
+    for (let i = 0; i < keys.length; i++) {
+      if (String(keys[i][0]).trim() === 'memo') {
+        sheet.getRange(i+2, 2, 1, 2).setValues([[content, ts]]);
+        SpreadsheetApp.flush();
+        return;
+      }
+    }
+  }
+  sheet.appendRow(['memo', content, ts]);
+  SpreadsheetApp.flush();
+}
+
+function getMemo() {
+  const sheet = getOrCreateMemoSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { content: '', updatedAt: '' };
+  const rows = sheet.getRange(2,1,last-1,3).getValues();
+  for (const r of rows) {
+    if (String(r[0]).trim() === 'memo') {
+      return { content: String(r[1]||''), updatedAt: String(r[2]||'') };
+    }
+  }
+  return { content: '', updatedAt: '' };
+}
+
+/* ════════════════════════════════════════
    유틸리티
 ════════════════════════════════════════ */
 function sortSheetByCol(sheet, col) {
@@ -420,6 +480,7 @@ function onOpen() {
 function initSheets() {
   getOrCreateWeightSheet();
   getOrCreateCycleSheet();
+  getOrCreateMemoSheet();
   SpreadsheetApp.getUi().alert('✅ 시트 초기화 완료');
 }
 

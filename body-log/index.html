@@ -257,6 +257,15 @@
     .nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
     .nav-btn.active{color:var(--black)}
 
+    /* ── MEMO CARD ── */
+    .memo-textarea{width:100%;min-height:96px;border:1px solid var(--200);border-radius:10px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--black);background:var(--white);outline:none;resize:vertical;line-height:1.55;transition:border-color .15s}
+    .memo-textarea:focus{border-color:var(--black)}
+    .memo-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+    .memo-updated{font-size:11px;color:var(--400)}
+    .memo-save-btn{background:var(--black);color:#fff;border:none;border-radius:9px;padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s}
+    .memo-save-btn:hover{background:var(--800)}
+    .memo-save-btn:active{transform:scale(.98)}
+
     /* ── SECTIONS ── */
     .section{display:none;flex-direction:column;gap:10px}
     .section.active{display:flex}
@@ -365,6 +374,16 @@
       <div class="card-label">최근 기록</div>
       <div class="history-list" id="recentList">
         <div class="empty-state">아직 기록이 없어요</div>
+      </div>
+    </div>
+
+    <!-- 메모 -->
+    <div class="card">
+      <div class="card-label">메모</div>
+      <textarea class="memo-textarea" id="homeMemo" placeholder="목표, 다짐, 기억할 것들을 자유롭게 적어두세요."></textarea>
+      <div class="memo-footer">
+        <span class="memo-updated" id="memoUpdated"></span>
+        <button class="memo-save-btn" onclick="saveMemo()">저장</button>
       </div>
     </div>
   </div>
@@ -589,7 +608,8 @@ const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwAMP8F4n_1L9IKwurGF
 let state = {
   weight:   {},
   cycles:   [],
-  settings: {defaultCycleLen:28, defaultPeriodLen:5}
+  settings: {defaultCycleLen:28, defaultPeriodLen:5},
+  memo:     {content:'', updatedAt:''}
 };
 let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null;
 
@@ -611,6 +631,7 @@ function loadLocal() {
       state.cycles = d.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
     }
     if (d.settings) state.settings = Object.assign({}, state.settings, d.settings);
+    if (d.memo)     state.memo     = d.memo;
     document.getElementById('defCycleLen').value  = state.settings.defaultCycleLen;
     document.getElementById('defPeriodLen').value = state.settings.defaultPeriodLen;
   } catch(e) { console.warn('loadLocal error', e); }
@@ -801,6 +822,7 @@ function renderAll() {
   renderHormoneGraph();
   renderLog();
   renderCycleTab();
+  renderMemo();
 }
 
 /* ═══════════ HOME ═══════════ */
@@ -1554,7 +1576,8 @@ async function syncAllToSheets() {
       body:    JSON.stringify({
         action: 'SYNC_ALL',
         weight: state.weight,
-        cycles: state.cycles
+        cycles: state.cycles,
+        memo:   state.memo
       })
     });
     // no-cors 에서는 응답 status가 0(opaque)이라 성공 여부를 알 수 없음
@@ -1581,9 +1604,9 @@ async function loadFromSheets() {
     if (json.status !== 'ok') { showToast('불러오기 실패: ' + json.message); return; }
     if (json.weight) state.weight = json.weight;
     if (json.cycles) {
-      // UUID 없는 항목 마이그레이션
       state.cycles = json.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
     }
+    if (json.memo)   state.memo   = json.memo;
     saveLocal();
     renderAll();
     closeSettings();
@@ -1600,6 +1623,24 @@ function saveSettings() {
   
   saveLocal(); closeSettings(); renderAll(); showToast('설정 저장됨');
 }
+/* ═══════════ MEMO ═══════════ */
+function renderMemo() {
+  document.getElementById('homeMemo').value = state.memo.content || '';
+  const upd = document.getElementById('memoUpdated');
+  upd.textContent = state.memo.updatedAt ? '마지막 수정: ' + state.memo.updatedAt : '';
+}
+function saveMemo() {
+  const content = document.getElementById('homeMemo').value;
+  const now = new Date();
+  const updatedAt = now.getFullYear() + '.' + pad(now.getMonth()+1) + '.' + pad(now.getDate())
+                  + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+  state.memo = { content, updatedAt };
+  saveLocal();
+  document.getElementById('memoUpdated').textContent = '마지막 수정: ' + updatedAt;
+  showToast('메모 저장됨');
+  if (SHEETS_URL) syncSheets('MEMO_SAVE', null, { content, updatedAt });
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
