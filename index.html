@@ -572,7 +572,6 @@
     <h2>설정</h2>
     <div class="set-row"><label>기본 주기 (일)</label><input type="number" id="defCycleLen" min="21" max="45" value="28"/></div>
     <div class="set-row"><label>생리 기간 (일)</label><input type="number" id="defPeriodLen" min="2" max="10" value="5"/></div>
-    <div class="set-row"><label>Google Sheets URL</label><input type="text" id="sheetsUrl" placeholder="Web App URL"/></div>
     <button class="btn-full" onclick="saveSettings()">저장</button>
     <button class="btn-full" style="margin-top:8px;background:var(--800)" onclick="syncAllToSheets()">☁ 시트로 전체 동기화</button>
     <button class="btn-full" style="margin-top:8px;background:var(--50);color:var(--black);border:1px solid var(--200)" onclick="loadFromSheets()">↓ 시트에서 불러오기</button>
@@ -582,11 +581,15 @@
 <script>
 'use strict';
 
+/* ═══════════ 구글 시트 설정 ═══════════ */
+// Google Apps Script 웹 앱 URL — 여기에 직접 입력
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwAMP8F4n_1L9IKwurGFxZPNxAzmdrg-xr15bHpt9ikcR0ZIk2aoqLm5F5M_d7GSTv2RA/exec';
+
 /* ═══════════ STATE ═══════════ */
 let state = {
-  weight:   {},  // 'YYYY-MM-DD': {weight,waist,thigh,bodyfat,memo}
-  cycles:   [],  // [{start:'YYYY-MM-DD'}]
-  settings: {defaultCycleLen:28, defaultPeriodLen:5, sheetsUrl:''}
+  weight:   {},
+  cycles:   [],
+  settings: {defaultCycleLen:28, defaultPeriodLen:5}
 };
 let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null;
 
@@ -605,13 +608,11 @@ function loadLocal() {
     const d = JSON.parse(localStorage.getItem('bodyLogData') || '{}');
     if (d.weight)   state.weight   = d.weight;
     if (d.cycles) {
-      // 기존 데이터에 id 없는 항목에 UUID 자동 부여 (마이그레이션)
       state.cycles = d.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
     }
     if (d.settings) state.settings = Object.assign({}, state.settings, d.settings);
     document.getElementById('defCycleLen').value  = state.settings.defaultCycleLen;
     document.getElementById('defPeriodLen').value = state.settings.defaultPeriodLen;
-    document.getElementById('sheetsUrl').value    = state.settings.sheetsUrl || '';
   } catch(e) { console.warn('loadLocal error', e); }
 }
 function saveLocal() { localStorage.setItem('bodyLogData', JSON.stringify(state)); }
@@ -713,12 +714,12 @@ function saveEntry() {
     memo:    document.getElementById('fMemo').value.trim()
   };
   saveLocal(); closeEntry(); renderAll(); showToast('저장 완료');
-  if (state.settings.sheetsUrl) syncSheets('WEIGHT', modalDate, state.weight[modalDate]);
+  if (SHEETS_URL) syncSheets('WEIGHT', modalDate, state.weight[modalDate]);
 }
 function deleteEntry() {
   delete state.weight[modalDate];
   saveLocal(); closeEntry(); renderAll(); showToast('삭제됐어요');
-  if (state.settings.sheetsUrl) syncSheets('WEIGHT_DELETE', modalDate);
+  if (SHEETS_URL) syncSheets('WEIGHT_DELETE', modalDate);
 }
 
 /* Inline home form */
@@ -733,7 +734,7 @@ function saveInlineEntry() {
     memo:    document.getElementById('ifMemo').value.trim()
   };
   saveLocal(); renderAll(); showToast('저장 완료 ✓');
-  if (state.settings.sheetsUrl) syncSheets('WEIGHT', todayStr, state.weight[todayStr]);
+  if (SHEETS_URL) syncSheets('WEIGHT', todayStr, state.weight[todayStr]);
 }
 
 /* ═══════════ CYCLE CRUD ═══════════ */
@@ -757,7 +758,7 @@ function addCycle() {
   const newCycle = { id: generateUUID(), start: val };
   state.cycles.push(newCycle);
   saveLocal(); renderAll(); showToast('생리 기록 완료');
-  if (state.settings.sheetsUrl) syncSheets('CYCLE_ADD', val, { id: newCycle.id });
+  if (SHEETS_URL) syncSheets('CYCLE_ADD', val, { id: newCycle.id });
 }
 
 function deleteCycle(id) {
@@ -766,7 +767,7 @@ function deleteCycle(id) {
   const removed = state.cycles[idx];
   state.cycles.splice(idx, 1);
   saveLocal(); renderAll(); showToast('삭제됐어요');
-  if (state.settings.sheetsUrl) syncSheets('CYCLE_DELETE', removed.start, { id: removed.id });
+  if (SHEETS_URL) syncSheets('CYCLE_DELETE', removed.start, { id: removed.id });
 }
 
 function updateCycle(id, newStart) {
@@ -779,13 +780,13 @@ function updateCycle(id, newStart) {
   const oldStart = state.cycles[idx].start;
   state.cycles[idx].start = newStart;
   saveLocal(); renderAll(); showToast('수정 완료');
-  if (state.settings.sheetsUrl) syncSheets('CYCLE_UPDATE', newStart, { id, oldStart });
+  if (SHEETS_URL) syncSheets('CYCLE_UPDATE', newStart, { id, oldStart });
 }
 
 /* ═══════════ SYNC ═══════════ */
 async function syncSheets(action, date, data) {
   try {
-    await fetch(state.settings.sheetsUrl, {
+    await fetch(SHEETS_URL, {
       method:'POST', mode:'no-cors',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({action, date, data})
@@ -1541,12 +1542,12 @@ function closeSettings() { document.getElementById('settingsOverlay').classList.
 /* 앱 전체 데이터 → 시트 일괄 동기화 */
 /* 앱 전체 데이터 → 시트 일괄 동기화 */
 async function syncAllToSheets() {
-  if (!state.settings.sheetsUrl) { showToast('Sheets URL을 먼저 입력해 주세요'); return; }
+  
   showToast('동기화 중...');
   try {
     // GAS는 CORS 헤더를 보내지 않으므로 no-cors 필수
     // no-cors 에서는 응답을 읽을 수 없지만 요청 자체는 전송됨
-    await fetch(state.settings.sheetsUrl, {
+    await fetch(SHEETS_URL, {
       method:  'POST',
       mode:    'no-cors',
       headers: { 'Content-Type': 'application/json' },
@@ -1567,12 +1568,12 @@ async function syncAllToSheets() {
 
 /* 시트 데이터 → 앱 불러오기 */
 async function loadFromSheets() {
-  if (!state.settings.sheetsUrl) { showToast('Sheets URL을 먼저 입력해 주세요'); return; }
+  
   showToast('불러오는 중...');
   try {
     // GET 요청은 GAS가 리다이렉트를 거쳐 응답하므로 follow 설정
     const res = await fetch(
-      state.settings.sheetsUrl + '?action=GET_ALL',
+      SHEETS_URL + '?action=GET_ALL',
       { method: 'GET', redirect: 'follow' }
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1596,7 +1597,7 @@ async function loadFromSheets() {
 function saveSettings() {
   state.settings.defaultCycleLen  = parseInt(document.getElementById('defCycleLen').value)  || 28;
   state.settings.defaultPeriodLen = parseInt(document.getElementById('defPeriodLen').value) || 5;
-  state.settings.sheetsUrl        = document.getElementById('sheetsUrl').value.trim();
+  
   saveLocal(); closeSettings(); renderAll(); showToast('설정 저장됨');
 }
 function showToast(msg) {
