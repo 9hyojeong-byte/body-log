@@ -123,11 +123,11 @@
     .cal-nav button{background:var(--100);border:none;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:var(--700);display:flex;align-items:center;justify-content:center;transition:background .15s}
     .cal-nav button:hover{background:var(--200)}
     .cal-nav h3{font-family:'DM Serif Display',serif;font-size:17px;font-weight:400;color:var(--black)}
-    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
     .cal-dow{text-align:center;font-size:10px;font-weight:500;color:var(--300);padding:4px 0 8px;letter-spacing:.06em;text-transform:uppercase}
 
     /* CAL DAY */
-    .cal-day{border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:6px 2px 5px;cursor:pointer;position:relative;min-height:58px;transition:background .1s;user-select:none}
+    .cal-day{border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:6px 2px 5px;cursor:pointer;position:relative;min-height:58px;transition:background .1s;user-select:none;min-width:0;overflow:hidden}
     .cal-day:hover:not(.empty){background:var(--100)}
     .cal-day.empty{cursor:default;min-height:58px}
     .cal-day .dn{font-size:13px;font-weight:400;color:var(--700);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;margin-bottom:3px}
