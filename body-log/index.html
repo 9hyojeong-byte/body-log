@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0a0a0a"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Body Log"/>
+  <title>Body Log</title>
+  <link rel="manifest" href="/body-log/manifest.json"/>
+  <link rel="apple-touch-icon" href="/body-log/icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/body-log/icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="/body-log/icon-512.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --black:#0a0a0a;--950:#111;--900:#1a1a1a;--800:#262626;
+      --700:#363636;--600:#525252;--500:#737373;--400:#a3a3a3;
+      --300:#d4d4d4;--200:#e5e5e5;--150:#ebebeb;--100:#f0f0f0;
+      --50:#f7f7f7;--white:#fff;
+      --bg:#f2f2f2;--card:#fff;--border:#e8e8e8;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--black);min-height:100dvh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+
+    /* ── HEADER ── */
+    header{background:var(--black);padding:18px 20px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
+    header h1{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--white);letter-spacing:-.3px}
+    header h1 em{font-style:italic;opacity:.45}
+    .hdr-btn{background:var(--800);border:none;cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
+    .hdr-btn:hover{background:var(--700)}
+    .hdr-btn svg{width:16px;height:16px;stroke:var(--400);fill:none;stroke-width:1.6}
+
+    /* ── MAIN ── */
+    main{flex:1;overflow-y:auto;padding:14px 14px 100px;display:flex;flex-direction:column;gap:10px}
+
+    /* ── CARD ── */
+    .card{background:var(--card);border-radius:18px;border:1px solid var(--border);padding:20px}
+    .card-label{font-size:10px;font-weight:500;color:var(--400);letter-spacing:.13em;text-transform:uppercase;margin-bottom:14px}
+
+    /* ══════════════════════════════
+       HOME — TODAY CARD
+    ══════════════════════════════ */
+    .today-card{background:var(--card);border-radius:20px;border:1px solid var(--border);overflow:hidden}
+
+    /* top row: date | cycle */
+    .today-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border)}
+    .today-date-col{background:var(--black);padding:20px 18px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;flex-shrink:0;min-width:96px}
+    .today-daynum{font-family:'DM Serif Display',serif;font-size:60px;font-weight:400;color:#fff;line-height:1;letter-spacing:-3px}
+    .today-dow{font-size:12px;color:var(--500);margin-top:3px;font-weight:400}
+    .today-mon{font-size:11px;color:var(--600);margin-top:1px}
+    .today-cycle-col{flex:1;padding:16px 16px 14px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+    .phase-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px;width:fit-content}
+    .pb-golden{background:#fff3e0;color:#e65100}
+    .pb-bad{background:#fce4ec;color:#880e4f}
+    .pb-caution{background:var(--150);color:var(--700)}
+    .pb-neutral{background:var(--100);color:var(--600)}
+    .cycle-desc{font-size:13px;color:var(--700);line-height:1.45}
+    .cycle-next{font-size:11px;color:var(--400);margin-top:1px}
+
+    /* rec banner */
+    .rec-banner{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)}
+    .rec-banner.rb-good{background:#fffbf5}
+    .rec-banner.rb-bad{background:#fdf5f7}
+    .rec-banner.rb-neutral{background:var(--50)}
+    .rec-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700}
+    .rb-good   .rec-icon{background:#ffe0b2;color:#e65100}
+    .rb-bad    .rec-icon{background:#fce4ec;color:#880e4f}
+    .rb-neutral .rec-icon{background:var(--100);color:var(--600)}
+    .rec-body{flex:1}
+    .rec-title{font-size:13px;font-weight:600;color:var(--black);line-height:1.3}
+    .rec-desc{font-size:11px;color:var(--500);margin-top:2px;line-height:1.4}
+
+    /* inline form */
+    .if-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+    .if-save-btn:active{transform:scale(.98)}
+    .if-field{display:flex;flex-direction:column;gap:4px}
+    .if-field label{font-size:9.5px;font-weight:500;color:var(--400);letter-spacing:.08em;text-transform:uppercase}
+    .if-field label em{font-style:normal;text-transform:none;font-size:9px;color:var(--300)}
+    .if-field input[type="number"],.if-field input[type="text"]{padding:10px 10px;border:1px solid var(--200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--black);background:var(--white);outline:none;width:100%;transition:border-color .15s;-moz-appearance:textfield}
+    .if-field input::-webkit-outer-spin-button,.if-field input::-webkit-inner-spin-button{-webkit-appearance:none}
+    .if-field input:focus{border-color:var(--black)}
+    .if-memo-row{margin-bottom:10px}
+    .if-memo-row input{width:100%;padding:10px 12px;border:1px solid var(--200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--black);background:var(--white);outline:none;transition:border-color .15s}
+    .if-memo-row input:focus{border-color:var(--black)}
+    .if-save-btn{width:100%;padding:13px;background:var(--black);color:#fff;border:none;border-radius:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background .15s}
+    .if-save-btn:hover{background:var(--800)}
+    .if-save-btn:active{transform:scale(.98)}
+
+    /* form toggle bar */
+    .form-toggle-bar{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;cursor:pointer;border-top:1px solid var(--border);user-select:none;transition:background .15s}
+    .form-toggle-bar:hover{background:var(--50)}
+    .form-toggle-bar span:first-child{font-size:13px;font-weight:500;color:var(--700)}
+    .form-toggle-arrow{font-size:18px;color:var(--400);transition:transform .22s;line-height:1;display:inline-block}
+    .form-toggle-arrow.open{transform:rotate(90deg)}
+    /* collapsible form */
+    .inline-form{overflow:hidden;max-height:0;padding-top:0;padding-bottom:0;transition:max-height .28s cubic-bezier(.4,0,.2,1), padding .28s}
+    .inline-form.expanded{max-height:400px;padding:16px 16px 18px}
+
+    /* logged state */
+    .today-logged{display:flex;align-items:center;justify-content:space-between;padding:16px 18px}
+    .tl-weight{font-family:'DM Serif Display',serif;font-size:42px;color:var(--black);line-height:1}
+    .tl-weight em{font-size:14px;color:var(--400);font-style:normal;font-family:'DM Sans',sans-serif;margin-left:3px}
+    .tl-meta{font-size:12px;color:var(--500);margin-top:4px}
+    .tl-edit{background:var(--100);border:none;border-radius:10px;padding:9px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--700);cursor:pointer;transition:background .15s;flex-shrink:0}
+    .tl-edit:hover{background:var(--200)}
+
+    /* ── QUICK STATS ── */
+    .strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .strip-cell{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 12px}
+    .strip-cell .big{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;color:var(--black);line-height:1}
+    .strip-cell .unit{font-size:11px;color:var(--400);margin-left:2px}
+    .strip-cell .sml{font-size:10px;color:var(--500);margin-top:4px}
+
+    /* ── TREND CHART ── */
+    .trend-wrap{height:72px;position:relative}
+    .trend-wrap canvas{width:100%;height:100%}
+
+    /* ── CALENDAR ── */
+    .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .cal-nav button{background:var(--100);border:none;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:var(--700);display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .cal-nav button:hover{background:var(--200)}
+    .cal-nav h3{font-family:'DM Serif Display',serif;font-size:17px;font-weight:400;color:var(--black)}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .cal-dow{text-align:center;font-size:10px;font-weight:500;color:var(--300);padding:4px 0 8px;letter-spacing:.06em;text-transform:uppercase}
+
+    /* CAL DAY */
+    .cal-day{border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:6px 2px 5px;cursor:pointer;position:relative;min-height:58px;transition:background .1s;user-select:none}
+    .cal-day:hover:not(.empty){background:var(--100)}
+    .cal-day.empty{cursor:default;min-height:58px}
+    .cal-day .dn{font-size:13px;font-weight:400;color:var(--700);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;margin-bottom:3px}
+    /* today: purple border */
+    .cal-day.today{border:2.5px solid #ec4899}
+    .cal-day.today .dn{color:var(--black);font-weight:700}
+    /* phases */
+    .cal-day.c-period{background:var(--150)}
+    .cal-day.c-period .dn{color:var(--800)}
+    .cal-day.c-golden{background:#fff3e0}
+    .cal-day.c-golden .dn{color:#bf5000}
+    .cal-day.c-ovul{background:var(--900)}
+    .cal-day.c-ovul .dn{color:#fff}
+    .cal-day.c-fertile{background:var(--150)}
+    .cal-day.c-start .dn{background:var(--black);color:#fff;font-weight:700}
+    .cal-day.c-premenstrual{background:#fce4ec}
+    .cal-day.c-premenstrual .dn{color:#880e4f}
+    /* today + phase */
+    .cal-day.today.c-period{background:var(--150)}
+    .cal-day.today.c-golden{background:#fff3e0}
+    .cal-day.today.c-fertile{background:var(--150)}
+    .cal-day.today.c-premenstrual{background:#fce4ec}
+    .cal-day.today.c-ovul{background:var(--900);border-color:#f9a8d4}
+    .cal-day.today.c-ovul .dn{color:#fff}
+    /* phase tags */
+    .dtag{font-size:7.5px;font-weight:500;padding:2px 4px;border-radius:4px;line-height:1.2;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;margin-bottom:2px}
+    .c-start         .dtag{background:var(--black);color:#fff}
+    .c-period        .dtag{background:var(--300);color:var(--800)}
+    .c-golden        .dtag{background:#ffe0b2;color:#e65100}
+    .c-ovul          .dtag{background:var(--600);color:#fff}
+    .c-fertile       .dtag{background:var(--200);color:var(--600)}
+    .c-premenstrual  .dtag{background:#f8bbd0;color:#880e4f}
+    /* weight dot */
+    .wdot{width:5px;height:5px;border-radius:50%;background:var(--black);margin-top:1px;flex-shrink:0}
+    .c-ovul .wdot{background:#fff}
+    /* good-day ring (weight recorded on golden day) */
+    .cal-day.good-day .dn{box-shadow:0 0 0 2px #e65100}
+    /* selected day highlight */
+    .cal-day.cal-selected{outline:2px solid #f59e0b;outline-offset:-2px}
+    .cal-day.cal-selected .dn{font-weight:700}
+
+    /* ── HORMONE GRAPH ── */
+    .hormone-wrap{position:relative;height:130px;margin-bottom:8px}
+    .hormone-wrap canvas{width:100%;height:100%;display:block}
+    .hormone-marker{position:absolute;top:0;bottom:0;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+    .hm-line{width:2px;flex:1;opacity:.85}
+    .hm-today  .hm-line{background:#ec4899}
+    .hm-selected .hm-line{background:#f59e0b}
+    .hm-label{font-size:9px;font-weight:600;background:#fff;padding:2px 5px;border-radius:4px;white-space:nowrap;margin-top:3px}
+    .hm-today    .hm-label{color:#ec4899;border:1px solid #fce7f3}
+    .hm-selected .hm-label{color:#b45309;border:1px solid #fde68a}
+
+    /* selected day bar */
+    .sel-day-bar{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 14px;background:var(--50);border-radius:12px;border:1px solid var(--200);gap:10px}
+    .sel-day-info{display:flex;flex-direction:column;gap:3px;min-width:0}
+    .sel-day-date{font-size:13px;font-weight:600;color:var(--black)}
+    .sel-day-phase{font-size:11px;color:var(--500)}
+    .sel-day-btn{display:flex;align-items:center;gap:5px;background:var(--black);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s}
+    .sel-day-btn:hover{background:var(--800)}
+    .hormone-phases{display:flex;margin-bottom:10px}
+    .hormone-phase-seg{flex:1;text-align:center;font-size:8.5px;font-weight:500;padding:4px 2px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hormone-legend{display:flex;gap:14px;flex-wrap:wrap}
+    .hl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--500)}
+    .hl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
+    .hormone-no-data{text-align:center;font-size:12px;color:var(--300);padding:12px 0}
+
+    /* ── HISTORY LIST ── */
+    .history-list{display:flex;flex-direction:column}
+    .h-item{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--50)}
+    .h-item:last-child{border-bottom:none}
+    .h-date{font-size:13px;font-weight:500;color:var(--black)}
+    .h-meta{font-size:11px;color:var(--500);margin-top:2px}
+    .h-weight{font-family:'DM Serif Display',serif;font-size:22px;color:var(--black)}
+    .h-unit{font-size:11px;color:var(--400)}
+    .h-del{background:none;border:none;cursor:pointer;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
+    .h-del:hover{background:var(--100)}
+    .h-del svg{width:13px;height:13px;stroke:var(--400);fill:none;stroke-width:1.6}
+
+    /* ── ENTRY MODAL ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center}
+    .overlay.active{display:flex}
+    .modal{background:var(--white);border-radius:24px 24px 0 0;padding:24px 20px max(28px,env(safe-area-inset-bottom));width:100%;max-width:480px;animation:slideUp .26s cubic-bezier(.32,.72,0,1)}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .modal-title{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--black)}
+    .modal-date-badge{font-size:12px;color:var(--500);background:var(--100);padding:5px 12px;border-radius:100px}
+    .modal-close{background:none;border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .modal-close:hover{background:var(--100)}
+    .modal-close svg{width:16px;height:16px;stroke:var(--600);fill:none;stroke-width:1.8}
+    .cycle-bar{border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;font-weight:500}
+    .cb-good{background:var(--50);border:1px solid var(--200);color:var(--600)}
+    .cb-caution{background:#fef3f5;border:1px solid #fdd;color:var(--700)}
+    .cb-none{display:none}
+    .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .field{display:flex;flex-direction:column;gap:5px}
+    .field label{font-size:10px;font-weight:500;color:var(--400);letter-spacing:.1em;text-transform:uppercase}
+    .field input{padding:12px 14px;border:1px solid var(--200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--black);background:var(--white);outline:none;transition:border-color .15s;width:100%}
+    .field input:focus{border-color:var(--black)}
+    .field-full{grid-column:1/-1}
+    .field textarea{padding:12px 14px;border:1px solid var(--200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--black);background:var(--white);outline:none;resize:none;width:100%;height:72px;transition:border-color .15s}
+    .field textarea:focus{border-color:var(--black)}
+    .modal-actions{display:flex;gap:8px;margin-top:14px}
+    .btn-save{flex:1;background:var(--black);color:#fff;border:none;border-radius:12px;padding:14px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s}
+    .btn-save:hover{background:var(--800)}
+    .btn-del-entry{background:var(--100);color:var(--600);border:none;border-radius:12px;padding:14px 18px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s}
+    .btn-del-entry:hover{background:var(--200)}
+
+    /* ── SETTINGS ── */
+    .settings-panel{background:var(--white);border-radius:24px 24px 0 0;padding:26px 22px max(28px,env(safe-area-inset-bottom));width:100%;max-width:480px;animation:slideUp .26s cubic-bezier(.32,.72,0,1)}
+    .settings-panel h2{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--black);margin-bottom:20px}
+    .set-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--100)}
+    .set-row label{font-size:14px;color:var(--700)}
+    .set-row input[type="number"],.set-row input[type="text"]{padding:8px 12px;border:1px solid var(--200);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;color:var(--black);background:var(--white);transition:border-color .15s}
+    .set-row input[type="number"]{width:76px;text-align:center}
+    .set-row input[type="text"]{width:142px;font-size:12px}
+    .set-row input:focus{border-color:var(--black)}
+    .btn-full{width:100%;margin-top:20px;padding:14px;border-radius:12px;background:var(--black);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s}
+    .btn-full:hover{background:var(--800)}
+
+    /* ── TOAST ── */
+    .toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--black);color:#fff;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:500;opacity:0;transition:opacity .22s,transform .22s;z-index:300;white-space:nowrap;pointer-events:none}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--100);display:flex;align-items:center;justify-content:space-around;padding:10px 0 max(10px,env(safe-area-inset-bottom));z-index:100}
+    .nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;letter-spacing:.05em;color:var(--300);padding:4px 18px;border-radius:10px;transition:color .15s}
+    .nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
+    .nav-btn.active{color:var(--black)}
+
+    /* ── SECTIONS ── */
+    .section{display:none;flex-direction:column;gap:10px}
+    .section.active{display:flex}
+    .empty-state{text-align:center;padding:28px 0;color:var(--300);font-size:13px}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Body <em>log</em></h1>
+  <button class="hdr-btn" onclick="openSettings()" aria-label="설정">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</header>
+
+<main>
+
+  <!-- ══ HOME ══ -->
+  <div class="section active" id="sec-home">
+
+    <!-- 오늘 카드 -->
+    <div class="today-card">
+      <!-- 날짜 + 생리주기 -->
+      <div class="today-top">
+        <div class="today-date-col">
+          <div class="today-daynum" id="tdDay"></div>
+          <div class="today-dow"    id="tdDow"></div>
+          <div class="today-mon"    id="tdMon"></div>
+        </div>
+        <div class="today-cycle-col">
+          <div class="phase-badge pb-neutral" id="tdPhaseBadge">—</div>
+          <div class="cycle-desc"  id="tdCycleDesc"></div>
+          <div class="cycle-next"  id="tdCycleNext"></div>
+        </div>
+      </div>
+
+      <!-- 측정 추천 배너 -->
+      <div class="rec-banner rb-neutral" id="recBanner">
+        <div class="rec-icon" id="recIcon">○</div>
+        <div class="rec-body">
+          <div class="rec-title" id="recTitle">오늘 체중을 기록해보세요</div>
+          <div class="rec-desc"  id="recDesc">꾸준한 기록이 정확한 추세를 만들어요.</div>
+        </div>
+      </div>
+
+      <!-- 인라인 기록 폼 (토글) -->
+      <div class="form-toggle-bar" id="formToggleBar" onclick="toggleInlineForm()">
+        <span id="formToggleLabel">체중 기록하기</span>
+        <span class="form-toggle-arrow" id="formToggleArrow">›</span>
+      </div>
+      <div class="inline-form" id="inlineForm">
+        <div class="if-fields">
+          <div class="if-field">
+            <label>체중 <em>kg</em></label>
+            <input type="number" id="ifWeight" step="0.1" min="20" max="200" placeholder="0.0" inputmode="decimal"/>
+          </div>
+          <div class="if-field">
+            <label>허리 <em>cm</em></label>
+            <input type="number" id="ifWaist" step="0.1" placeholder="0.0" inputmode="decimal"/>
+          </div>
+          <div class="if-field">
+            <label>허벅지 <em>cm</em></label>
+            <input type="number" id="ifThigh" step="0.1" placeholder="0.0" inputmode="decimal"/>
+          </div>
+        </div>
+        <div class="if-memo-row">
+          <input type="text" id="ifMemo" placeholder="메모 (컨디션, 식단 등)"/>
+        </div>
+        <button class="if-save-btn" onclick="saveInlineEntry()">오늘 체중 저장</button>
+      </div>
+
+      <!-- 기록 완료 뷰 -->
+      <div class="today-logged" id="todayLogged" style="display:none">
+        <div>
+          <div class="tl-weight" id="tlWeight">—<em>kg</em></div>
+          <div class="tl-meta"   id="tlMeta"></div>
+        </div>
+        <button class="tl-edit" id="tlEditBtn">수정</button>
+      </div>
+    </div>
+
+    <!-- 통계 스트립 -->
+    <div class="strip" id="statsStrip" style="display:none">
+      <div class="strip-cell">
+        <div class="big" id="statAvg">—<span class="unit">kg</span></div>
+        <div class="sml">황금기 평균</div>
+      </div>
+      <div class="strip-cell">
+        <div class="big" id="statDiff">—</div>
+        <div class="sml">저번달 대비</div>
+      </div>
+      <div class="strip-cell">
+        <div class="big" id="statCount">0</div>
+        <div class="sml">이번달 기록</div>
+      </div>
+    </div>
+
+    <!-- 트렌드 -->
+    <div class="card" id="trendCard" style="display:none">
+      <div class="card-label">최근 30일 체중</div>
+      <div class="trend-wrap"><canvas id="trendCanvas"></canvas></div>
+    </div>
+
+    <!-- 최근 기록 -->
+    <div class="card">
+      <div class="card-label">최근 기록</div>
+      <div class="history-list" id="recentList">
+        <div class="empty-state">아직 기록이 없어요</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CALENDAR ══ -->
+  <div class="section" id="sec-calendar">
+    <div class="card">
+      <div class="cal-nav">
+        <button onclick="prevMonth()">‹</button>
+        <h3 id="calTitle"></h3>
+        <button onclick="nextMonth()">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <!-- 호르몬 그래프 -->
+    <div class="card" id="hormoneCard">
+      <div class="card-label">호르몬 주기 그래프</div>
+      <div class="hormone-wrap">
+        <canvas id="hormoneCanvas"></canvas>
+        <!-- 오늘 마커 -->
+        <div class="hormone-marker hm-today" id="hormoneMarker" style="display:none">
+          <div class="hm-line"></div>
+          <div class="hm-label" id="hormoneMarkerLabel"></div>
+        </div>
+        <!-- 선택 날짜 마커 -->
+        <div class="hormone-marker hm-selected" id="hormoneSelMarker" style="display:none">
+          <div class="hm-line"></div>
+          <div class="hm-label" id="hormoneSelLabel"></div>
+        </div>
+      </div>
+      <!-- 구간 레이블 -->
+      <div class="hormone-phases" id="hormonePhases"></div>
+      <!-- 범례 -->
+      <div class="hormone-legend">
+        <div class="hl-item"><span class="hl-dot" style="background:#2563eb"></span>에스트로겐</div>
+        <div class="hl-item"><span class="hl-dot" style="background:#e53935"></span>프로게스테론</div>
+        <div class="hl-item"><span class="hl-dot" style="background:#0d9488"></span>수분저류량 <span style="font-size:10px;color:var(--400)">(7일 지연)</span></div>
+        <div class="hl-item"><span class="hl-dot" style="background:#ec4899;width:2px;height:14px;border-radius:1px"></span>오늘</div>
+        <div class="hl-item"><span class="hl-dot" style="background:#f59e0b;width:2px;height:14px;border-radius:1px"></span>선택</div>
+      </div>
+      <div class="hormone-no-data" id="hormoneNoData" style="display:none">
+        주기 탭에서 생리 시작일을 입력하면 그래프가 표시됩니다.
+      </div>
+
+      <!-- 선택된 날짜 정보 바 -->
+      <div class="sel-day-bar" id="selDayBar" style="display:none">
+        <div class="sel-day-info">
+          <div class="sel-day-date" id="selDayDate"></div>
+          <div class="sel-day-phase" id="selDayPhase"></div>
+        </div>
+        <button class="sel-day-btn" id="selDayBtn" onclick="openEntrySelected()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          체중 기록
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">생리주기 표시</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
+          <div style="width:18px;height:18px;border-radius:4px;background:#fff3e0;border:1px solid #ffe0b2;flex-shrink:0;margin-top:1px"></div>
+          <span><b style="color:#e65100;font-weight:500">황금기</b> — 생리 후 1주, 부기가 빠져 체중 측정 최적</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
+          <div style="width:18px;height:18px;border-radius:4px;background:#fce4ec;border:1px solid #f8bbd0;flex-shrink:0;margin-top:1px"></div>
+          <span><b style="color:#880e4f;font-weight:500">체중측정비추</b> — 생리 직전 7일, 호르몬으로 체중이 높게 나와요</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
+          <div style="width:18px;height:18px;border-radius:4px;background:var(--150);border:1px solid var(--200);flex-shrink:0;margin-top:1px"></div>
+          <span><b style="color:var(--700);font-weight:500">생리기간</b> — 실제 체중보다 높게 측정될 수 있어요</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
+          <div style="width:18px;height:18px;border-radius:4px;background:var(--900);flex-shrink:0;margin-top:1px"></div>
+          <span><b style="color:var(--400);font-weight:500">배란예정</b> — 일시적 체중 변화 가능</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
+          <div style="width:18px;height:18px;border-radius:4px;background:var(--white);border:2.5px solid #ec4899;flex-shrink:0;margin-top:1px"></div>
+          <span><b style="color:#7c3aed;font-weight:500">보라 테두리</b> — 오늘 날짜</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
+          <div style="width:18px;height:18px;border-radius:50%;background:var(--black);flex-shrink:0;margin-top:1px"></div>
+          <span><b style="color:var(--black);font-weight:500">검은 점</b> — 체중 기록 있음</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOG ══ -->
+  <div class="section" id="sec-log">
+    <div class="card">
+      <div class="card-label">전체 기록</div>
+      <div class="history-list" id="fullList">
+        <div class="empty-state">아직 기록이 없어요</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CYCLE ══ -->
+  <div class="section" id="sec-cycle">
+    <div class="card">
+      <div class="card-label">오늘 생리주기 상태</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap" id="cycleStatRow">
+        <div class="strip-cell" style="flex:1;min-width:80px">
+          <div class="big" id="cycleAvgLen">—</div><div class="sml">평균 주기(일)</div>
+        </div>
+        <div class="strip-cell" style="flex:1;min-width:80px">
+          <div class="big" id="cyclePeriodLen">—</div><div class="sml">생리기간(일)</div>
+        </div>
+        <div class="strip-cell" style="flex:1;min-width:80px">
+          <div class="big" id="cycleCount">0</div><div class="sml">기록횟수</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">생리 시작일 입력</div>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <label style="font-size:10px;font-weight:500;color:var(--400);letter-spacing:.1em;text-transform:uppercase">날짜 선택</label>
+          <input type="date" id="cycleStartInput" style="padding:12px 14px;border:1px solid var(--200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--black);background:var(--white);outline:none;width:100%"/>
+        </div>
+        <button class="btn-save" style="width:auto;padding:0 20px;height:44px;border-radius:10px" onclick="addCycle()">기록</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">생리 기록 내역</div>
+      <div class="history-list" id="cycleList">
+        <div class="empty-state">아직 기록이 없어요</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="switchTab('home',this)">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>홈
+  </button>
+  <button class="nav-btn" onclick="switchTab('calendar',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>달력
+  </button>
+  <button class="nav-btn" onclick="switchTab('log',this)">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>기록
+  </button>
+  <button class="nav-btn" onclick="switchTab('cycle',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>주기
+  </button>
+</nav>
+
+<!-- ENTRY MODAL -->
+<div class="overlay" id="entryOverlay" onclick="closeEntryOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">체중 기록</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="modal-date-badge" id="modalDateBadge"></div>
+        <button class="modal-close" onclick="closeEntry()">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="cycle-bar cb-none" id="cycleBar"></div>
+    <div class="field-grid">
+      <div class="field"><label>체중 (kg)</label><input type="number" id="fWeight" step="0.1" min="20" max="200" placeholder="0.0" inputmode="decimal"/></div>
+      <div class="field"><label>허리 (cm)</label><input type="number" id="fWaist"  step="0.1" placeholder="0.0" inputmode="decimal"/></div>
+      <div class="field"><label>허벅지 (cm)</label><input type="number" id="fThigh" step="0.1" placeholder="0.0" inputmode="decimal"/></div>
+      <div class="field"><label>체지방률 (%)</label><input type="number" id="fBodyfat" step="0.1" placeholder="0.0" inputmode="decimal"/></div>
+      <div class="field field-full"><label>메모</label><textarea id="fMemo" placeholder="오늘의 컨디션, 식단 등 자유롭게..."></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-del-entry" id="delEntryBtn" style="display:none" onclick="deleteEntry()">삭제</button>
+      <button class="btn-save" onclick="saveEntry()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- CYCLE EDIT OVERLAY -->
+<div class="overlay" id="cycleEditOverlay" onclick="closeCycleEditOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">생리 시작일 수정</div>
+      <button class="modal-close" onclick="closeCycleEdit()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--400);font-family:monospace;margin-bottom:14px" id="cycleEditId"></div>
+    <div class="field" style="margin-bottom:16px">
+      <label>생리 시작일</label>
+      <input type="date" id="cycleEditDate" style="padding:12px 14px;border:1px solid var(--200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--black);background:var(--white);outline:none;width:100%"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-del-entry" onclick="confirmDeleteCycleEdit()">삭제</button>
+      <button class="btn-save" onclick="saveCycleEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS OVERLAY -->
+<div class="overlay" id="settingsOverlay" onclick="closeSettingsOutside(event)">
+  <div class="settings-panel">
+    <h2>설정</h2>
+    <div class="set-row"><label>기본 주기 (일)</label><input type="number" id="defCycleLen" min="21" max="45" value="28"/></div>
+    <div class="set-row"><label>생리 기간 (일)</label><input type="number" id="defPeriodLen" min="2" max="10" value="5"/></div>
+    <button class="btn-full" onclick="saveSettings()">저장</button>
+    <button class="btn-full" style="margin-top:8px;background:var(--800)" onclick="syncAllToSheets()">☁ 시트로 전체 동기화</button>
+    <button class="btn-full" style="margin-top:8px;background:var(--50);color:var(--black);border:1px solid var(--200)" onclick="loadFromSheets()">↓ 시트에서 불러오기</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════ 구글 시트 설정 ═══════════ */
+// Google Apps Script 웹 앱 URL — 여기에 직접 입력
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwAMP8F4n_1L9IKwurGFxZPNxAzmdrg-xr15bHpt9ikcR0ZIk2aoqLm5F5M_d7GSTv2RA/exec';
+
+/* ═══════════ STATE ═══════════ */
+let state = {
+  weight:   {},
+  cycles:   [],
+  settings: {defaultCycleLen:28, defaultPeriodLen:5}
+};
+let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null;
+
+/* ═══════════ INIT ═══════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  loadLocal();
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  document.getElementById('cycleStartInput').value = toYMD(now);
+  renderAll();
+});
+
+/* ═══════════ STORAGE ═══════════ */
+function loadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem('bodyLogData') || '{}');
+    if (d.weight)   state.weight   = d.weight;
+    if (d.cycles) {
+      state.cycles = d.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
+    }
+    if (d.settings) state.settings = Object.assign({}, state.settings, d.settings);
+    document.getElementById('defCycleLen').value  = state.settings.defaultCycleLen;
+    document.getElementById('defPeriodLen').value = state.settings.defaultPeriodLen;
+  } catch(e) { console.warn('loadLocal error', e); }
+}
+function saveLocal() { localStorage.setItem('bodyLogData', JSON.stringify(state)); }
+
+/* ═══════════ CYCLE LOGIC ═══════════ */
+function getSortedCycles() {
+  return state.cycles.slice().sort((a,b) => new Date(b.start) - new Date(a.start));
+}
+function avgCycleLen() {
+  const s = getSortedCycles();
+  if (s.length < 2) return state.settings.defaultCycleLen;
+  const diffs = [];
+  for (let i=0; i<s.length-1; i++) {
+    const d = (new Date(s[i].start) - new Date(s[i+1].start)) / 86400000;
+    if (d > 0 && d < 90) diffs.push(d);
+  }
+  return diffs.length ? Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length) : state.settings.defaultCycleLen;
+}
+function nextPeriodDate() {
+  const s = getSortedCycles();
+  if (!s.length) return null;
+  const d = new Date(s[0].start);
+  d.setDate(d.getDate() + avgCycleLen());
+  return d;
+}
+function getPhase(dateStr) {
+  const s = getSortedCycles();
+  if (!s.length) return null;
+  const dt  = new Date(dateStr);
+  const cl  = avgCycleLen();
+  const pl  = state.settings.defaultPeriodLen;
+
+  function check(startDate) {
+    const day = Math.floor((dt - startDate) / 86400000);
+    if (day < 0 || day >= cl) return null;
+    if (day === 0)          return 'start';
+    if (day < pl)           return 'period';
+    if (day < pl + 7)       return 'golden';
+    const od = Math.round(cl / 2) - 2;
+    if (day >= od-2 && day <= od+2) return day === od ? 'ovul' : 'fertile';
+    if (day >= cl - 7)      return 'premenstrual';
+    return null;
+  }
+
+  for (const c of s) {
+    const r = check(new Date(c.start));
+    if (r) return r;
+  }
+  const last = new Date(s[0].start);
+  for (let i = 1; i <= 3; i++) {
+    const p = new Date(last);
+    p.setDate(last.getDate() + cl * i);
+    const r = check(p);
+    if (r) return r;
+  }
+  return null;
+}
+
+/* ═══════════ WEIGHT CRUD ═══════════ */
+function openEntry(dateStr) {
+  modalDate = dateStr;
+  const e = state.weight[dateStr] || {};
+  document.getElementById('fWeight').value  = e.weight  || '';
+  document.getElementById('fWaist').value   = e.waist   || '';
+  document.getElementById('fThigh').value   = e.thigh   || '';
+  document.getElementById('fBodyfat').value = e.bodyfat || '';
+  document.getElementById('fMemo').value    = e.memo    || '';
+  document.getElementById('modalDateBadge').textContent = fmtDateKo(new Date(dateStr));
+  document.getElementById('delEntryBtn').style.display  = state.weight[dateStr] ? '' : 'none';
+
+  const bar = document.getElementById('cycleBar');
+  const phase = getPhase(dateStr);
+  const ADV = {
+    golden:       {cls:'cb-good',    txt:'✓ 체중 재기 좋은 날이에요. 실제 체중에 가장 가까운 시기입니다.'},
+    period:       {cls:'cb-caution', txt:'⚠ 생리 기간 — 부기로 체중이 높게 나올 수 있어요.'},
+    start:        {cls:'cb-caution', txt:'⚠ 생리 시작일 — 실제 체중보다 높게 측정될 수 있어요.'},
+    premenstrual: {cls:'cb-caution', txt:'⚠ 생리 직전 — 체중 측정을 피하는 것을 권장해요.'},
+    ovul:         {cls:'cb-caution', txt:'ℹ 배란 예정일 — 일시적 체중 증가가 있을 수 있어요.'},
+    fertile:      {cls:'cb-caution', txt:'ℹ 가임 기간 — 약간의 체중 변화가 있을 수 있어요.'},
+  };
+  const adv = ADV[phase];
+  if (adv) { bar.className=`cycle-bar ${adv.cls}`; bar.textContent=adv.txt; }
+  else     { bar.className='cycle-bar cb-none'; bar.textContent=''; }
+
+  document.getElementById('entryOverlay').classList.add('active');
+  setTimeout(() => document.getElementById('fWeight').focus(), 320);
+}
+function closeEntry() { document.getElementById('entryOverlay').classList.remove('active'); }
+function closeEntryOutside(e) { if (e.target===document.getElementById('entryOverlay')) closeEntry(); }
+
+function saveEntry() {
+  const w = parseFloat(document.getElementById('fWeight').value);
+  if (!w) { showToast('체중을 입력해 주세요'); return; }
+  state.weight[modalDate] = {
+    weight:  w,
+    waist:   parseFloat(document.getElementById('fWaist').value)   || null,
+    thigh:   parseFloat(document.getElementById('fThigh').value)   || null,
+    bodyfat: parseFloat(document.getElementById('fBodyfat').value) || null,
+    memo:    document.getElementById('fMemo').value.trim()
+  };
+  saveLocal(); closeEntry(); renderAll(); showToast('저장 완료');
+  if (SHEETS_URL) syncSheets('WEIGHT', modalDate, state.weight[modalDate]);
+}
+function deleteEntry() {
+  delete state.weight[modalDate];
+  saveLocal(); closeEntry(); renderAll(); showToast('삭제됐어요');
+  if (SHEETS_URL) syncSheets('WEIGHT_DELETE', modalDate);
+}
+
+/* Inline home form */
+function saveInlineEntry() {
+  const w = parseFloat(document.getElementById('ifWeight').value);
+  if (!w) { showToast('체중을 입력해 주세요'); return; }
+  state.weight[todayStr] = {
+    weight:  w,
+    waist:   parseFloat(document.getElementById('ifWaist').value) || null,
+    thigh:   parseFloat(document.getElementById('ifThigh').value) || null,
+    bodyfat: null,
+    memo:    document.getElementById('ifMemo').value.trim()
+  };
+  saveLocal(); renderAll(); showToast('저장 완료 ✓');
+  if (SHEETS_URL) syncSheets('WEIGHT', todayStr, state.weight[todayStr]);
+}
+
+/* ═══════════ CYCLE CRUD ═══════════ */
+
+/** UUID v4 생성 (crypto.randomUUID 지원 여부에 따라 폴리필) */
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // 폴리필
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function addCycle() {
+  const val = document.getElementById('cycleStartInput').value;
+  if (!val) { showToast('날짜를 선택해 주세요'); return; }
+  if (state.cycles.some(c => c.start === val)) { showToast('이미 기록된 날짜예요'); return; }
+  const newCycle = { id: generateUUID(), start: val };
+  state.cycles.push(newCycle);
+  saveLocal(); renderAll(); showToast('생리 기록 완료');
+  if (SHEETS_URL) syncSheets('CYCLE_ADD', val, { id: newCycle.id });
+}
+
+function deleteCycle(id) {
+  const idx = state.cycles.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  const removed = state.cycles[idx];
+  state.cycles.splice(idx, 1);
+  saveLocal(); renderAll(); showToast('삭제됐어요');
+  if (SHEETS_URL) syncSheets('CYCLE_DELETE', removed.start, { id: removed.id });
+}
+
+function updateCycle(id, newStart) {
+  const idx = state.cycles.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  // 다른 날짜와 중복 체크
+  if (state.cycles.some((c, i) => i !== idx && c.start === newStart)) {
+    showToast('이미 기록된 날짜예요'); return;
+  }
+  const oldStart = state.cycles[idx].start;
+  state.cycles[idx].start = newStart;
+  saveLocal(); renderAll(); showToast('수정 완료');
+  if (SHEETS_URL) syncSheets('CYCLE_UPDATE', newStart, { id, oldStart });
+}
+
+/* ═══════════ SYNC ═══════════ */
+async function syncSheets(action, date, data) {
+  try {
+    await fetch(SHEETS_URL, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, date, data})
+    });
+  } catch(e) {}
+}
+
+/* ═══════════ RENDER ALL ═══════════ */
+function renderAll() {
+  renderHome();
+  renderCalendar();
+  renderHormoneGraph();
+  renderLog();
+  renderCycleTab();
+}
+
+/* ═══════════ HOME ═══════════ */
+const DOW_KO = ['일','월','화','수','목','금','토'];
+const PHASE_LABEL = {
+  start:'생리 시작일', period:'생리 기간', golden:'황금기',
+  ovul:'배란 예정일', fertile:'가임 기간', premenstrual:'체중 측정 비추'
+};
+const PHASE_DESC = {
+  start:        '생리가 시작됐어요. 몸 관리 잘 챙기세요.',
+  period:       '생리 기간이에요. 충분히 쉬세요.',
+  golden:       '생리 후 황금기예요. 컨디션 최고조!',
+  ovul:         '배란 예정일이에요.',
+  fertile:      '가임 기간, 배란 전후입니다.',
+  premenstrual: '생리 직전이에요. 호르몬 변화가 시작돼요.',
+};
+const PHASE_BADGE_CLS = {
+  golden:'pb-golden', premenstrual:'pb-bad',
+  period:'pb-caution', start:'pb-caution',
+  ovul:'pb-caution', fertile:'pb-caution'
+};
+const REC = {
+  golden:       {cls:'rb-good',    icon:'✓', title:'오늘 체중 재기 가장 좋은 날!',      desc:'황금기 — 부기가 빠져 실제 체중에 가장 가까워요.'},
+  premenstrual: {cls:'rb-bad',     icon:'✕', title:'체중 측정 비추 기간이에요',          desc:'생리 직전 — 호르몬으로 체중이 높게 나올 수 있어요.'},
+  period:       {cls:'rb-bad',     icon:'！', title:'생리 기간, 체중 측정 주의',          desc:'부기로 실제 체중보다 높게 측정될 수 있어요.'},
+  start:        {cls:'rb-bad',     icon:'！', title:'생리 시작일, 체중 측정 주의',        desc:'부기로 실제 체중보다 높게 측정될 수 있어요.'},
+  ovul:         {cls:'rb-neutral', icon:'ℹ', title:'배란 전후, 체중 변동이 있을 수 있어요', desc:'일시적인 변화예요. 추세를 함께 참고하세요.'},
+  fertile:      {cls:'rb-neutral', icon:'ℹ', title:'가임 기간이에요',                    desc:'약간의 체중 변화가 있을 수 있어요.'},
+};
+
+function renderHome() {
+  const now   = new Date();
+  todayStr    = toYMD(now);
+  const phase = getPhase(todayStr);
+  const entry = state.weight[todayStr];
+
+  /* 날짜 */
+  document.getElementById('tdDay').textContent = now.getDate();
+  document.getElementById('tdDow').textContent = DOW_KO[now.getDay()] + '요일';
+  document.getElementById('tdMon').textContent = now.getFullYear() + '년 ' + (now.getMonth()+1) + '월';
+
+  /* 생리주기 배지 */
+  const badge = document.getElementById('tdPhaseBadge');
+  if (phase && PHASE_LABEL[phase]) {
+    badge.textContent = PHASE_LABEL[phase];
+    badge.className   = 'phase-badge ' + (PHASE_BADGE_CLS[phase] || 'pb-neutral');
+    document.getElementById('tdCycleDesc').textContent = PHASE_DESC[phase] || '';
+  } else if (state.cycles.length) {
+    badge.textContent = '일반 기간';
+    badge.className   = 'phase-badge pb-neutral';
+    document.getElementById('tdCycleDesc').textContent = '특별한 주기 변화 없는 일반 기간이에요.';
+  } else {
+    badge.textContent = '주기 미등록';
+    badge.className   = 'phase-badge pb-neutral';
+    document.getElementById('tdCycleDesc').textContent = '주기 탭에서 생리 시작일을 입력해 주세요.';
+  }
+  const nxt = nextPeriodDate();
+  document.getElementById('tdCycleNext').textContent =
+    (nxt && state.cycles.length) ? '다음 생리 예정 ' + fmtDateKo(nxt) : '';
+
+  /* 추천 배너 */
+  const rec = REC[phase] || {cls:'rb-neutral', icon:'○', title:'오늘 체중을 기록해보세요', desc:'꾸준한 기록이 정확한 추세를 만들어요.'};
+  const banner = document.getElementById('recBanner');
+  banner.className = 'rec-banner ' + rec.cls;
+  document.getElementById('recIcon').textContent  = rec.icon;
+  document.getElementById('recTitle').textContent = rec.title;
+  document.getElementById('recDesc').textContent  = rec.desc;
+
+  /* 폼 / 완료 뷰 */
+  const form      = document.getElementById('inlineForm');
+  const logged    = document.getElementById('todayLogged');
+  const toggleBar = document.getElementById('formToggleBar');
+  const arrow     = document.getElementById('formToggleArrow');
+
+  if (entry) {
+    // 기록 완료 상태 — 폼·토글바 숨기고 완료 뷰 표시
+    toggleBar.style.display = 'none';
+    form.style.display      = 'none';
+    form.classList.remove('expanded');
+    logged.style.display    = '';
+    document.getElementById('tlWeight').innerHTML = entry.weight + '<em>kg</em>';
+    const meta = [
+      entry.waist   ? '허리 '   + entry.waist   + 'cm' : '',
+      entry.thigh   ? '허벅지 ' + entry.thigh   + 'cm' : '',
+      entry.bodyfat ? '체지방 ' + entry.bodyfat + '%'  : '',
+      entry.memo    ? '"' + entry.memo + '"'            : '',
+    ].filter(Boolean).join(' · ');
+    document.getElementById('tlMeta').textContent = meta || '추가 정보 없음';
+    document.getElementById('tlEditBtn').onclick = () => openEntry(todayStr);
+  } else {
+    // 미기록 상태 — 토글바 표시, 황금기면 폼 자동 열기
+    logged.style.display    = 'none';
+    toggleBar.style.display = '';
+    form.style.display      = '';
+    ['ifWeight','ifWaist','ifThigh','ifMemo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    if (phase === 'golden') {
+      form.classList.add('expanded');
+      arrow.classList.add('open');
+      document.getElementById('formToggleLabel').textContent = '체중 기록하기';
+    } else {
+      form.classList.remove('expanded');
+      arrow.classList.remove('open');
+      document.getElementById('formToggleLabel').textContent = '체중 기록하기';
+    }
+  }
+
+  /* 통계 */
+  const allE = Object.entries(state.weight).sort((a,b) => a[0] < b[0] ? 1 : -1);
+  const strip = document.getElementById('statsStrip');
+  if (!allE.length) {
+    strip.style.display = 'none';
+    document.getElementById('trendCard').style.display = 'none';
+  } else {
+    strip.style.display = '';
+
+    // 가장 가까운 과거 황금기 체중 평균
+    // 황금기 = 생리 시작일 + periodLen ~ + periodLen+6 (7일간)
+    const goldenWeights = allE
+      .filter(([d]) => getPhase(d) === 'golden')
+      .map(([,e]) => e.weight);
+
+    // 황금기 기록 중 오늘 이전 것만 (미래 황금기 제외)
+    const pastGoldenWeights = allE
+      .filter(([d]) => d <= todayStr && getPhase(d) === 'golden')
+      .map(([,e]) => e.weight);
+
+    const avgW = pastGoldenWeights.length
+      ? (pastGoldenWeights.reduce((a,b)=>a+b,0) / pastGoldenWeights.length).toFixed(1)
+      : null;
+    document.getElementById('statAvg').innerHTML =
+      avgW ? avgW+'<span class="unit">kg</span>' : '—<span class="unit">kg</span>';
+
+    // 이번달 기록 수 (statCount는 유지)
+    const nowM = now.getFullYear() + '-' + pad(now.getMonth()+1);
+    const thisMW = allE.filter(([d]) => d.startsWith(nowM)).map(([,e]) => e.weight);
+    document.getElementById('statCount').textContent = thisMW.length;
+
+    // 저번달 대비: 직전 황금기 평균 vs 그 이전 황금기 평균으로 비교
+    // 황금기 기록을 날짜순으로 묶어서 주기별 평균 계산
+    const s = getSortedCycles();
+    const cl = avgCycleLen(), pl = state.settings.defaultPeriodLen;
+    let cycleGoldenAvgs = []; // 각 주기의 황금기 평균 [최신순]
+    const checkCycles = [...s];
+    // 예측 주기 3개 추가
+    if (s.length) {
+      const last = new Date(s[0].start);
+      for (let i=1; i<=3; i++) {
+        const p = new Date(last); p.setDate(last.getDate()+cl*i);
+        checkCycles.unshift({start: toYMD(p)});
+      }
+    }
+    checkCycles.forEach(c => {
+      const start = new Date(c.start);
+      const goldenDays = [];
+      for (let d=pl; d<pl+7; d++) {
+        const dt = new Date(start); dt.setDate(start.getDate()+d);
+        const ds = toYMD(dt);
+        if (ds > todayStr) continue; // 미래 제외
+        if (state.weight[ds]) goldenDays.push(state.weight[ds].weight);
+      }
+      if (goldenDays.length) {
+        const avg = goldenDays.reduce((a,b)=>a+b,0)/goldenDays.length;
+        cycleGoldenAvgs.push(avg);
+      }
+    });
+
+    if (cycleGoldenAvgs.length >= 2) {
+      const d2 = (cycleGoldenAvgs[0] - cycleGoldenAvgs[1]).toFixed(1);
+      document.getElementById('statDiff').innerHTML =
+        (d2>0?'+':'')+d2+'<span class="unit">kg</span>';
+    } else {
+      document.getElementById('statDiff').textContent = '—';
+    }
+    renderTrend(allE);
+  }
+
+  /* 최근 기록 */
+  const recent = allE.slice(0, 5);
+  const rl = document.getElementById('recentList');
+  if (!recent.length) { rl.innerHTML = '<div class="empty-state">아직 기록이 없어요</div>'; return; }
+  rl.innerHTML = '';
+  recent.forEach(([d, e]) => {
+    const row = document.createElement('div'); row.className = 'h-item';
+    const ph  = getPhase(d);
+    const tag = {start:'시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'체중측정비추'}[ph]||'';
+    row.innerHTML =
+      '<div style="flex:1;cursor:pointer" onclick="openEntry(\''+d+'\')">'
+      + '<div class="h-date">' + fmtDateKo(new Date(d))
+      + (tag ? ' <span style="font-size:10px;background:var(--100);border-radius:4px;padding:1px 5px;color:var(--500);font-weight:500">'+tag+'</span>' : '')
+      + '</div>'
+      + '<div class="h-meta">' + [e.waist?'허리 '+e.waist+'cm':'', e.thigh?'허벅지 '+e.thigh+'cm':'', e.bodyfat?'체지방 '+e.bodyfat+'%':''].filter(Boolean).join(' · ') + '</div>'
+      + '</div>'
+      + '<div style="cursor:pointer;text-align:right" onclick="openEntry(\''+d+'\')">'
+      + '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>'
+      + '</div>';
+    rl.appendChild(row);
+  });
+}
+
+/* ═══════════ TREND ═══════════ */
+function renderTrend(allE) {
+  const card = document.getElementById('trendCard');
+  const last30 = allE.filter(([d]) => (new Date()-new Date(d))/86400000 <= 30)
+                     .sort((a,b) => a[0] > b[0] ? 1 : -1);
+  if (last30.length < 2) { card.style.display='none'; return; }
+  card.style.display = '';
+  const canvas = document.getElementById('trendCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 300, H = 72;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const ws  = last30.map(([,e]) => e.weight);
+  const min = Math.min(...ws)-1, max = Math.max(...ws)+1;
+  const px  = i => (i/(last30.length-1))*W;
+  const py  = w => H - ((w-min)/(max-min))*H;
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath(); ctx.moveTo(px(0),H);
+  last30.forEach(([,e],i) => ctx.lineTo(px(i), py(e.weight)));
+  ctx.lineTo(px(last30.length-1),H); ctx.closePath();
+  ctx.fillStyle='rgba(10,10,10,0.05)'; ctx.fill();
+  ctx.beginPath();
+  last30.forEach(([,e],i) => i===0 ? ctx.moveTo(px(i),py(e.weight)) : ctx.lineTo(px(i),py(e.weight)));
+  ctx.strokeStyle='#0a0a0a'; ctx.lineWidth=1.5; ctx.stroke();
+  last30.forEach(([,e],i) => {
+    ctx.beginPath(); ctx.arc(px(i),py(e.weight),2.5,0,Math.PI*2);
+    ctx.fillStyle='#0a0a0a'; ctx.fill();
+  });
+}
+
+/* ═══════════ HORMONE GRAPH ═══════════ */
+function renderHormoneGraph() {
+  const noData = document.getElementById('hormoneNoData');
+  const wrap   = document.querySelector('.hormone-wrap');
+  const legend = document.querySelector('.hormone-legend');
+  const phases = document.getElementById('hormonePhases');
+  const marker = document.getElementById('hormoneMarker');
+
+  const s = getSortedCycles();
+  if (!s.length) {
+    noData.style.display  = '';
+    wrap.style.display    = 'none';
+    legend.style.display  = 'none';
+    phases.style.display  = 'none';
+    marker.style.display  = 'none';
+    document.getElementById('hormoneSelMarker').style.display = 'none';
+    return;
+  }
+  noData.style.display  = 'none';
+  wrap.style.display    = '';
+  legend.style.display  = '';
+  phases.style.display  = '';
+
+  // ── X축: 현재 캘린더 월의 1일~말일 ──
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const N = daysInMonth;
+
+  // 각 날짜 문자열 배열
+  const datestrs = [];
+  for (let d = 1; d <= N; d++) {
+    datestrs.push(calYear + '-' + pad(calMonth + 1) + '-' + pad(d));
+  }
+
+  const cl = avgCycleLen();
+  const pl = state.settings.defaultPeriodLen;
+  const ovDay = Math.round(cl / 2) - 2;
+
+  // ── 각 날짜의 생리주기 내 일수(dayInCycle) 계산 ──
+  // → 호르몬값은 이 dayInCycle 기반 가우시안으로 계산
+  function getDayInCycle(ds) {
+    const dt = new Date(ds);
+    // 가장 최근 생리 시작일 찾기 (과거 + 예측 포함)
+    const sorted = getSortedCycles();
+    if (!sorted.length) return null;
+    const last = new Date(sorted[0].start);
+    // 해당 날짜가 속하는 주기 시작일 계산
+    let diff = Math.floor((dt - last) / 86400000);
+    // 미래 예측: diff가 음수면 이전 주기로
+    if (diff < 0) {
+      const cycles = Math.ceil(-diff / cl);
+      diff += cl * cycles;
+    }
+    return diff % cl;
+  }
+
+  // ── 호르몬 커브 생성 (dayInCycle 기반) ──
+  function hormoneAt(dic) {
+    const e1    = 0.95 * Math.exp(-Math.pow(dic - (ovDay - 1), 2) / (2 * Math.pow(cl * 0.09, 2)));
+    const e2    = 0.45 * Math.exp(-Math.pow(dic - (ovDay + Math.round(cl * 0.22)), 2) / (2 * Math.pow(cl * 0.10, 2)));
+    const eBase = 0.08 + (dic < pl ? -0.05 * (1 - dic / pl) : 0);
+    const estro = Math.max(0.04, Math.min(1.0, e1 + e2 + eBase));
+
+    const lutealPeak = ovDay + Math.round(cl * 0.22);
+    const p1    = 0.92 * Math.exp(-Math.pow(dic - lutealPeak, 2) / (2 * Math.pow(cl * 0.11, 2)));
+    const prog  = Math.max(0.03, Math.min(1.0, p1 + 0.04));
+
+    return { estro, prog };
+  }
+
+  // 각 날짜에 대해 dayInCycle → 호르몬값 계산
+  const estroArr  = [];
+  const progestArr = [];
+  const dicArr    = [];
+
+  for (let i = 0; i < N; i++) {
+    const dic = getDayInCycle(datestrs[i]);
+    dicArr.push(dic !== null ? dic : 0);
+    const h = hormoneAt(dic !== null ? dic : 0);
+    estroArr.push(h.estro);
+    progestArr.push(h.prog);
+  }
+
+  // ── 수분저류량 (7일 지연) ──
+  const DELAY = 7;
+  const waterRaw = [];
+  for (let i = 0; i < N; i++) {
+    // 7일 전 날짜의 호르몬값 참조
+    const srcIdx = i - DELAY;
+    let dic7;
+    if (srcIdx >= 0) {
+      dic7 = dicArr[srcIdx];
+    } else {
+      // 이전 달로 넘어가면 dayInCycle wrap
+      dic7 = ((dicArr[0] - (DELAY - i)) % cl + cl) % cl;
+    }
+    const h7 = hormoneAt(dic7);
+    waterRaw.push(h7.estro + h7.prog);
+  }
+  const wMin  = Math.min(...waterRaw);
+  const wMax  = Math.max(...waterRaw);
+  const water = waterRaw.map(v => (v - wMin) / (wMax - wMin + 0.001));
+
+  // ── Canvas ──
+  const canvas = document.getElementById('hormoneCanvas');
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = canvas.offsetWidth || 300;
+  const H      = 140;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const padT = 10, padB = 22, padL = 4, padR = 4;
+  const gW = W - padL - padR;
+  const gH = H - padT - padB;
+
+  // X/Y 변환 — X는 날짜 인덱스 기준
+  const xAt = i => padL + (i / (N - 1)) * gW;
+  const yAt = v => padT + (1 - v) * gH;
+
+  // ── 구간 배경 (달력 phase 기반) ──
+  const PHASE_COLOR = {
+    start:        'rgba(235,235,235,0.55)',
+    period:       'rgba(235,235,235,0.55)',
+    golden:       'rgba(255,237,213,0.65)',
+    fertile:      'rgba(221,214,254,0.35)',
+    ovul:         'rgba(221,214,254,0.55)',
+    premenstrual: 'rgba(252,228,236,0.65)',
+  };
+
+  // 연속 구간 병합해서 rect 그리기
+  let prevPhase = null, segStart = 0;
+  const flushSeg = (endI, ph) => {
+    const color = PHASE_COLOR[ph];
+    if (!color) return;
+    const x1 = xAt(segStart);
+    const x2 = xAt(Math.min(endI, N - 1));
+    ctx.fillStyle = color;
+    ctx.fillRect(x1, padT, x2 - x1 + (endI < N - 1 ? 0 : gW/N), gH);
+  };
+
+  for (let i = 0; i < N; i++) {
+    const starts = new Set(state.cycles.map(c => c.start));
+    const ep = starts.has(datestrs[i]) ? 'start' : (getPhase(datestrs[i]) || 'none');
+    if (ep !== prevPhase) {
+      if (prevPhase && prevPhase !== 'none') flushSeg(i - 1, prevPhase);
+      prevPhase = ep; segStart = i;
+    }
+    if (i === N - 1 && prevPhase && prevPhase !== 'none') flushSeg(i, prevPhase);
+  }
+
+  // ── X축 날짜 눈금 (1, 5, 10, 15, 20, 25, 말일) ──
+  ctx.fillStyle   = 'rgba(0,0,0,0.3)';
+  ctx.font        = '9px DM Sans, sans-serif';
+  ctx.textAlign   = 'center';
+  const tickDays  = [1, 5, 10, 15, 20, 25, N];
+  tickDays.forEach(d => {
+    const i = d - 1;
+    const x = xAt(i);
+    ctx.fillText(d, x, H - 5);
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth   = 1;
+    ctx.moveTo(x, padT + gH);
+    ctx.lineTo(x, padT + gH + 4);
+    ctx.stroke();
+  });
+
+  // ── 가로 보조선 ──
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+  ctx.lineWidth   = 1;
+  [0.25, 0.5, 0.75].forEach(v => {
+    const y = yAt(v);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + gW, y); ctx.stroke();
+  });
+
+  // ── drawCurve helper ──
+  const drawCurve = (data, color, lineW) => {
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = xAt(i), y = yAt(v);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = lineW;
+    ctx.lineJoin    = 'round';
+    ctx.lineCap     = 'round';
+    ctx.stroke();
+  };
+
+  // 에스트로겐 영역 채우기
+  ctx.beginPath();
+  estroArr.forEach((v, i) => { const x=xAt(i),y=yAt(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(xAt(N-1), yAt(0)); ctx.lineTo(xAt(0), yAt(0)); ctx.closePath();
+  ctx.fillStyle = 'rgba(37,99,235,0.07)'; ctx.fill();
+
+  // 수분저류 영역 채우기
+  ctx.beginPath();
+  water.forEach((v, i) => { const x=xAt(i),y=yAt(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(xAt(N-1), yAt(0)); ctx.lineTo(xAt(0), yAt(0)); ctx.closePath();
+  ctx.fillStyle = 'rgba(20,184,166,0.08)'; ctx.fill();
+
+  drawCurve(estroArr,  '#2563eb', 2.0);
+  drawCurve(progestArr,'#e53935', 2.0);
+  drawCurve(water,     '#0d9488', 1.5);
+
+  // ── 오늘 마커 ──
+  const todayFull = toYMD(new Date());
+  const todayIdx  = datestrs.indexOf(todayFull);
+  const markerEl  = document.getElementById('hormoneMarker');
+  if (todayIdx >= 0) {
+    const leftPct = (xAt(todayIdx) / W * 100).toFixed(2) + '%';
+    markerEl.style.display = '';
+    markerEl.style.left    = leftPct;
+    const phase = getPhase(todayFull);
+    const LABEL = {start:'생리시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'측정비추'};
+    document.getElementById('hormoneMarkerLabel').textContent = '오늘' + (LABEL[phase]?' '+LABEL[phase]:'');
+  } else {
+    markerEl.style.display = 'none';
+  }
+
+  // ── 선택 날짜 마커 (selectedCalDay) ──
+  updateHormoneSelMarkerByDatestrs(datestrs);
+
+  // ── 하단 구간 레이블 (오늘 기준) ──
+  // 현재 월에서 오늘이 있으면 오늘 위상, 없으면 1일 위상 기준
+  const refDate    = todayIdx >= 0 ? todayFull : datestrs[0];
+  const refPhase   = getPhase(refDate) || 'none';
+  const PHASE_SEGMENTS = ['생리기간','황금기','난포기','배란','황체기','생리전'];
+  const PHASE_MAP_SEG  = {start:'생리기간',period:'생리기간',golden:'황금기',fertile:'배란',ovul:'배란',premenstrual:'생리전'};
+  const activeSegLabel = PHASE_MAP_SEG[refPhase] || '';
+
+  phases.innerHTML = '';
+  // 구간 비율은 주기 길이 기반 고정
+  const SEG_DEF = [
+    {label:'생리기간', days: pl},
+    {label:'황금기',   days: 7},
+    {label:'난포기',   days: Math.max(1, ovDay - 2 - (pl+7))},
+    {label:'배란',     days: 5},
+    {label:'황체기',   days: Math.max(1, cl - 7 - (ovDay+3))},
+    {label:'생리전',   days: 7},
+  ];
+  const ZONE_STYLE = {
+    '생리기간':{ bg:'#f0f0f0', color:'#666' },
+    '황금기':  { bg:'#fff3e0', color:'#e65100' },
+    '난포기':  { bg:'#f5f5f5', color:'#999' },
+    '배란':    { bg:'#ede9fe', color:'#7c3aed' },
+    '황체기':  { bg:'#f5f5f5', color:'#999' },
+    '생리전':  { bg:'#fce4ec', color:'#880e4f' },
+  };
+  SEG_DEF.forEach(seg => {
+    const el    = document.createElement('div');
+    el.className = 'hormone-phase-seg';
+    el.style.flex = String(seg.days);
+    const active  = seg.label === activeSegLabel;
+    const st      = ZONE_STYLE[seg.label] || { bg:'#f5f5f5', color:'#999' };
+    el.style.background = active ? st.bg      : 'transparent';
+    el.style.color      = active ? st.color   : 'var(--300)';
+    el.style.fontWeight = active ? '700'      : '400';
+    el.textContent = seg.label;
+    phases.appendChild(el);
+  });
+}
+
+// 선택 마커를 현재 월의 datestrs 기준으로 업데이트
+function updateHormoneSelMarkerByDatestrs(datestrs) {
+  const selMarker = document.getElementById('hormoneSelMarker');
+  if (!selectedCalDay || !datestrs) { selMarker.style.display='none'; return; }
+  const idx = datestrs.indexOf(selectedCalDay);
+  if (idx < 0) { selMarker.style.display='none'; return; }
+
+  const canvas  = document.getElementById('hormoneCanvas');
+  const W       = canvas.offsetWidth || 300;
+  const N       = datestrs.length;
+  const padL    = 4, padR = 4;
+  const gW      = W - padL - padR;
+  const leftPx  = padL + (idx / (N - 1)) * gW;
+
+  selMarker.style.display = '';
+  selMarker.style.left    = (leftPx / W * 100).toFixed(2) + '%';
+
+  const phase = getPhase(selectedCalDay);
+  const LABEL = {start:'생리시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'측정비추'};
+  document.getElementById('hormoneSelLabel').textContent =
+    pad(parseInt(selectedCalDay.split('-')[2])) + '일' + (LABEL[phase]?' '+LABEL[phase]:'');
+}
+/* ═══════════ CALENDAR ═══════════ */
+function renderCalendar() {
+  const DOW = ['일','월','화','수','목','금','토'];
+  document.getElementById('calTitle').textContent = calYear + '. ' + pad(calMonth+1);
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  DOW.forEach(d => {
+    const el = document.createElement('div'); el.className='cal-dow'; el.textContent=d; grid.appendChild(el);
+  });
+  const first  = new Date(calYear, calMonth, 1).getDay();
+  const days   = new Date(calYear, calMonth+1, 0).getDate();
+  const today  = toYMD(new Date());
+  const starts = new Set(state.cycles.map(c=>c.start));
+  const TAGS   = {start:'시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'체중측정비추'};
+
+  for (let i=0; i<first; i++) {
+    const el = document.createElement('div'); el.className='cal-day empty'; grid.appendChild(el);
+  }
+  for (let d=1; d<=days; d++) {
+    const ds    = calYear+'-'+pad(calMonth+1)+'-'+pad(d);
+    const phase = getPhase(ds);
+    const ep    = starts.has(ds) ? 'start' : phase;
+    const isToday   = ds === today;
+    const hasWeight = !!state.weight[ds];
+    const isGolden  = ep === 'golden';
+
+    const el = document.createElement('div');
+    let cls = 'cal-day';
+    if      (ep==='start')        cls += ' c-start';
+    else if (ep==='period')       cls += ' c-period';
+    else if (ep==='golden')       cls += ' c-golden';
+    else if (ep==='ovul')         cls += ' c-ovul';
+    else if (ep==='fertile')      cls += ' c-fertile';
+    else if (ep==='premenstrual') cls += ' c-premenstrual';
+    if (isToday)               cls += ' today';
+    if (isGolden && hasWeight) cls += ' good-day';
+    el.className = cls;
+
+    const dn = document.createElement('div'); dn.className='dn'; dn.textContent=d;
+    el.appendChild(dn);
+    if (ep && TAGS[ep]) {
+      const t = document.createElement('div'); t.className='dtag'; t.textContent=TAGS[ep]; el.appendChild(t);
+    }
+    if (hasWeight) {
+      const dot = document.createElement('div'); dot.className='wdot'; el.appendChild(dot);
+    }
+    el.addEventListener('click', () => selectCalDay(ds));
+    grid.appendChild(el);
+  }
+}
+
+/* ═══════════ LOG TAB ═══════════ */
+function renderLog() {
+  const list = document.getElementById('fullList');
+  const all  = Object.entries(state.weight).sort((a,b) => a[0]<b[0] ? 1 : -1);
+  if (!all.length) { list.innerHTML='<div class="empty-state">아직 기록이 없어요</div>'; return; }
+  list.innerHTML = '';
+  all.forEach(([d, e]) => {
+    const row = document.createElement('div'); row.className='h-item';
+    const ph  = getPhase(d);
+    const tag = {start:'시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'체중측정비추'}[ph]||'';
+    row.innerHTML =
+      '<div style="flex:1;cursor:pointer" onclick="openEntry(\''+d+'\')">'
+      + '<div class="h-date">' + fmtDateKo(new Date(d))
+      + (tag ? ' <span style="font-size:10px;background:var(--100);border-radius:4px;padding:1px 5px;color:var(--500);font-weight:500">'+tag+'</span>' : '')
+      + '</div>'
+      + '<div class="h-meta">' + [e.waist?'허리 '+e.waist+'cm':'', e.thigh?'허벅지 '+e.thigh+'cm':'', e.bodyfat?'체지방 '+e.bodyfat+'%':'', e.memo?'"'+e.memo+'"':''].filter(Boolean).join(' · ') + '</div>'
+      + '</div>'
+      + '<div style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="openEntry(\''+d+'\')">'
+      + '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>'
+      + '</div>';
+    list.appendChild(row);
+  });
+}
+
+/* ═══════════ CYCLE TAB ═══════════ */
+function renderCycleTab() {
+  document.getElementById('cycleAvgLen').textContent    = state.cycles.length >= 2 ? avgCycleLen() : '—';
+  document.getElementById('cyclePeriodLen').textContent = state.settings.defaultPeriodLen;
+  document.getElementById('cycleCount').textContent     = state.cycles.length;
+
+  const list = document.getElementById('cycleList');
+  const s    = getSortedCycles();
+  if (!s.length) { list.innerHTML='<div class="empty-state">아직 기록이 없어요</div>'; return; }
+  list.innerHTML = '';
+  s.forEach((c, i) => {
+    let pill = '';
+    if (i < s.length - 1) {
+      const diff = Math.round((new Date(s[i].start) - new Date(s[i+1].start)) / 86400000);
+      pill = '<span style="font-size:11px;background:var(--100);border-radius:100px;padding:2px 10px;color:var(--500);font-weight:500;margin-top:3px;display:inline-block">주기 '+diff+'일</span>';
+    }
+    const row = document.createElement('div'); row.className = 'h-item';
+    row.innerHTML =
+      '<div style="flex:1"><div class="h-date">' + fmtDateKo(new Date(c.start)) + '</div>' + pill
+      + '<div style="font-size:10px;color:var(--300);margin-top:3px;font-family:monospace">' + (c.id || '—') + '</div></div>'
+      + '<div style="display:flex;gap:6px;align-items:center">'
+      + '<button class="tl-edit" onclick="openCycleEdit(\'' + c.id + '\',\'' + c.start + '\')" style="font-size:12px;padding:6px 12px">수정</button>'
+      + '<button class="h-del" onclick="deleteCycle(\'' + c.id + '\')" aria-label="삭제">'
+      + '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>'
+      + '</button></div>';
+    list.appendChild(row);
+  });
+}
+
+/* ═══════════ UI HELPERS ═══════════ */
+/* ── 생리 기록 수정 모달 ── */
+let editingCycleId = null;
+function openCycleEdit(id, start) {
+  editingCycleId = id;
+  document.getElementById('cycleEditId').textContent = 'ID: ' + id;
+  document.getElementById('cycleEditDate').value = start;
+  document.getElementById('cycleEditOverlay').classList.add('active');
+}
+function closeCycleEdit() { document.getElementById('cycleEditOverlay').classList.remove('active'); }
+function closeCycleEditOutside(e) { if (e.target === document.getElementById('cycleEditOverlay')) closeCycleEdit(); }
+function saveCycleEdit() {
+  const newStart = document.getElementById('cycleEditDate').value;
+  if (!newStart) { showToast('날짜를 선택해 주세요'); return; }
+  updateCycle(editingCycleId, newStart);
+  closeCycleEdit();
+}
+function confirmDeleteCycleEdit() {
+  if (confirm('이 생리 기록을 삭제하시겠어요?')) {
+    deleteCycle(editingCycleId);
+    closeCycleEdit();
+  }
+}
+
+function toggleInlineForm() {
+  const form  = document.getElementById('inlineForm');
+  const arrow = document.getElementById('formToggleArrow');
+  const isOpen = form.classList.contains('expanded');
+  if (isOpen) {
+    form.classList.remove('expanded');
+    arrow.classList.remove('open');
+  } else {
+    form.classList.add('expanded');
+    arrow.classList.add('open');
+    // 열리면 체중 입력에 포커스
+    setTimeout(() => document.getElementById('ifWeight').focus(), 300);
+  }
+}
+/* 달력 날짜 선택 → 그래프 마커 + 정보 바 업데이트 */
+function selectCalDay(ds) {
+  selectedCalDay = ds;
+
+  // 선택된 셀 강조 (cal-selected 클래스)
+  document.querySelectorAll('.cal-day.cal-selected').forEach(el => el.classList.remove('cal-selected'));
+  const allDays = document.querySelectorAll('.cal-day');
+  allDays.forEach(el => {
+    if (el.querySelector('.dn') && el.querySelector('.dn').textContent == parseInt(ds.split('-')[2])) {
+      const cellDate = calYear+'-'+pad(calMonth+1)+'-'+pad(parseInt(el.querySelector('.dn').textContent));
+      if (cellDate === ds) el.classList.add('cal-selected');
+    }
+  });
+
+  // 정보 바 업데이트
+  const bar    = document.getElementById('selDayBar');
+  const phase  = getPhase(ds);
+  const PHASE_LABEL = {start:'생리 시작일',period:'생리 기간',golden:'황금기 ✓',ovul:'배란 예정일',fertile:'가임 기간',premenstrual:'체중 측정 비추'};
+  const phaseText   = PHASE_LABEL[phase] || '일반';
+  const hasEntry    = !!state.weight[ds];
+
+  document.getElementById('selDayDate').textContent  = fmtDateKo(new Date(ds)) + (hasEntry ? '  ·  기록 있음 ●' : '');
+  document.getElementById('selDayPhase').textContent = phaseText;
+  document.getElementById('selDayBtn').textContent   = '';
+  document.getElementById('selDayBtn').innerHTML     =
+    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+    + (hasEntry ? ' 수정' : ' 체중 기록');
+  bar.style.display = '';
+
+  // 그래프 선택 마커 업데이트
+  updateHormoneSelMarker(ds);
+}
+
+function openEntrySelected() {
+  if (selectedCalDay) openEntry(selectedCalDay);
+}
+
+function updateHormoneSelMarker(ds) {
+  // 현재 캘린더 월의 datestrs 재생성 후 위임
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const datestrs = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    datestrs.push(calYear + '-' + pad(calMonth + 1) + '-' + pad(d));
+  }
+  updateHormoneSelMarkerByDatestrs(datestrs);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'calendar') { renderCalendar(); renderHormoneGraph(); }
+  else {
+    // 달력 탭을 벗어나면 선택 상태 초기화
+    selectedCalDay = null;
+    const bar = document.getElementById('selDayBar');
+    if (bar) bar.style.display = 'none';
+    const sel = document.getElementById('hormoneSelMarker');
+    if (sel) sel.style.display = 'none';
+  }
+}
+function prevMonth() {
+  calMonth--; if(calMonth<0){calMonth=11;calYear--;}
+  selectedCalDay = null;
+  document.getElementById('selDayBar').style.display = 'none';
+  renderCalendar(); renderHormoneGraph();
+}
+function nextMonth() {
+  calMonth++; if(calMonth>11){calMonth=0;calYear++;}
+  selectedCalDay = null;
+  document.getElementById('selDayBar').style.display = 'none';
+  renderCalendar(); renderHormoneGraph();
+}
+function openSettings()  { document.getElementById('settingsOverlay').classList.add('active'); }
+function closeSettingsOutside(e) { if(e.target===document.getElementById('settingsOverlay')) closeSettings(); }
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('active'); }
+/* 앱 전체 데이터 → 시트 일괄 동기화 */
+/* 앱 전체 데이터 → 시트 일괄 동기화 */
+async function syncAllToSheets() {
+  
+  showToast('동기화 중...');
+  try {
+    // GAS는 CORS 헤더를 보내지 않으므로 no-cors 필수
+    // no-cors 에서는 응답을 읽을 수 없지만 요청 자체는 전송됨
+    await fetch(SHEETS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        action: 'SYNC_ALL',
+        weight: state.weight,
+        cycles: state.cycles
+      })
+    });
+    // no-cors 에서는 응답 status가 0(opaque)이라 성공 여부를 알 수 없음
+    // fetch 자체가 throw 없이 끝나면 요청은 전송된 것
+    showToast('✓ 동기화 요청 전송됨 (시트 확인 필요)');
+  } catch(e) {
+    console.error('syncAllToSheets error:', e);
+    showToast('연결 실패: ' + e.message);
+  }
+}
+
+/* 시트 데이터 → 앱 불러오기 */
+async function loadFromSheets() {
+  
+  showToast('불러오는 중...');
+  try {
+    // GET 요청은 GAS가 리다이렉트를 거쳐 응답하므로 follow 설정
+    const res = await fetch(
+      SHEETS_URL + '?action=GET_ALL',
+      { method: 'GET', redirect: 'follow' }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.status !== 'ok') { showToast('불러오기 실패: ' + json.message); return; }
+    if (json.weight) state.weight = json.weight;
+    if (json.cycles) {
+      // UUID 없는 항목 마이그레이션
+      state.cycles = json.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
+    }
+    saveLocal();
+    renderAll();
+    closeSettings();
+    showToast('✓ 시트에서 불러오기 완료');
+  } catch(e) {
+    console.error('loadFromSheets error:', e);
+    showToast('불러오기 실패: ' + e.message);
+  }
+}
+
+function saveSettings() {
+  state.settings.defaultCycleLen  = parseInt(document.getElementById('defCycleLen').value)  || 28;
+  state.settings.defaultPeriodLen = parseInt(document.getElementById('defPeriodLen').value) || 5;
+  
+  saveLocal(); closeSettings(); renderAll(); showToast('설정 저장됨');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ═══════════ DATE UTILS ═══════════ */
+function toYMD(d)    { return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function pad(n)      { return String(n).padStart(2,'0'); }
+function fmtDateKo(d){ return d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate()); }
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // 현재 페이지 경로에서 base를 자동 감지
+    // GitHub Pages: /body-log/  →  scope = /body-log/
+    // 로컬 / 기타:  /           →  scope = /
+    const base = (location.pathname.startsWith('/body-log'))
+      ? '/body-log/'
+      : '/';
+    const swUrl = base + 'sw.js';
+    navigator.serviceWorker.register(swUrl, { scope: base })
+      .then(reg => console.log('[SW] registered, scope:', reg.scope))
+      .catch(err => console.error('[SW] registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
