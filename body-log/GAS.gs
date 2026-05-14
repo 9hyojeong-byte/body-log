@@ -6,7 +6,7 @@
  *
  *  [시트 구조]
  *  ┌──────────────────────────────────────────────────────┐
- *  │ weight_log │ 날짜(PK) | 체중 | 허리 | 허벅지 | ...  │
+ *  │ weight_log │ 날짜(PK) | 체중 | 허리 | 허벅지 | ... | uuid │
  *  │ cycle_log  │ id(UUID) | 생리시작일 | 주기 | ...      │
  *  │ memo       │ 키       | 내용       | 수정일시        │
  *  └──────────────────────────────────────────────────────┘
@@ -116,19 +116,20 @@ function doPost(e) {
 /* ════════════════════════════════════════
    WEIGHT 시트
    PK: 날짜(A열) — 하루 1건
-   컬럼: 날짜 | 체중 | 허리 | 허벅지 | 체지방률 | 메모 | 수정일시 | 생리주기단계
+   컬럼: 날짜 | 체중 | 허리 | 허벅지 | 체지방률 | 메모 | 수정일시 | 생리주기단계 | uuid
 ════════════════════════════════════════ */
 function getOrCreateWeightSheet() {
   const ss  = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_WEIGHT);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_WEIGHT);
-    const h = ['날짜','체중(kg)','허리(cm)','허벅지(cm)','체지방률(%)','메모','수정일시','생리주기단계'];
+    const h = ['날짜','체중(kg)','허리(cm)','허벅지(cm)','체지방률(%)','메모','수정일시','생리주기단계','uuid'];
     sheet.getRange(1,1,1,h.length).setValues([h])
          .setBackground('#1a1a1a').setFontColor('#ffffff').setFontWeight('bold');
     sheet.setFrozenRows(1);
     sheet.setColumnWidth(1,110); sheet.setColumnWidth(6,200);
     sheet.setColumnWidth(7,160); sheet.setColumnWidth(8,120);
+    sheet.setColumnWidth(9,280);
   }
   return sheet;
 }
@@ -147,9 +148,17 @@ function upsertWeight(dateStr, data) {
   const sheet    = getOrCreateWeightSheet();
   const stage    = getCycleStage(dateStr);
   const now      = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
-  const row      = [dateStr, data.weight||'', data.waist||'', data.thigh||'',
-                    data.bodyfat||'', data.memo||'', now, stage];
   const existing = findWeightRow(sheet, dateStr);
+  // 기존 행이 있으면 UUID 보존, 없으면 신규 생성
+  let uuid = data.id || '';
+  if (existing > 0) {
+    const existingUuid = String(sheet.getRange(existing, 9).getValue() || '').trim();
+    uuid = uuid || existingUuid || Utilities.getUuid();
+  } else {
+    uuid = uuid || Utilities.getUuid();
+  }
+  const row = [dateStr, data.weight||'', data.waist||'', data.thigh||'',
+               data.bodyfat||'', data.memo||'', now, stage, uuid];
   if (existing > 0) {
     sheet.getRange(existing,1,1,row.length).setValues([row]);
   } else {
@@ -170,13 +179,13 @@ function getAllWeight() {
   const sheet = getOrCreateWeightSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return {};
-  const rows = sheet.getRange(2,1,last-1,6).getValues();
+  const rows = sheet.getRange(2,1,last-1,9).getValues();
   const out  = {};
   rows.forEach(r => {
     const d = fmtDate(r[0]);
     if (!d) return;
-    out[d] = { weight: toNum(r[1]), waist: toNum(r[2]), thigh: toNum(r[3]),
-               bodyfat: toNum(r[4]), memo: String(r[5]||'') };
+    out[d] = { id: String(r[8]||''), weight: toNum(r[1]), waist: toNum(r[2]),
+               thigh: toNum(r[3]), bodyfat: toNum(r[4]), memo: String(r[5]||'') };
   });
   return out;
 }
