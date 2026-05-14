@@ -1539,23 +1539,29 @@ function openSettings()  { document.getElementById('settingsOverlay').classList.
 function closeSettingsOutside(e) { if(e.target===document.getElementById('settingsOverlay')) closeSettings(); }
 function closeSettings() { document.getElementById('settingsOverlay').classList.remove('active'); }
 /* 앱 전체 데이터 → 시트 일괄 동기화 */
+/* 앱 전체 데이터 → 시트 일괄 동기화 */
 async function syncAllToSheets() {
   if (!state.settings.sheetsUrl) { showToast('Sheets URL을 먼저 입력해 주세요'); return; }
   showToast('동기화 중...');
   try {
-    const res = await fetch(state.settings.sheetsUrl, {
-      method: 'POST',
+    // GAS는 CORS 헤더를 보내지 않으므로 no-cors 필수
+    // no-cors 에서는 응답을 읽을 수 없지만 요청 자체는 전송됨
+    await fetch(state.settings.sheetsUrl, {
+      method:  'POST',
+      mode:    'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body:    JSON.stringify({
         action: 'SYNC_ALL',
         weight: state.weight,
         cycles: state.cycles
       })
     });
-    const json = await res.json();
-    showToast(json.status === 'ok' ? '✓ 시트 동기화 완료' : '동기화 실패: ' + json.message);
+    // no-cors 에서는 응답 status가 0(opaque)이라 성공 여부를 알 수 없음
+    // fetch 자체가 throw 없이 끝나면 요청은 전송된 것
+    showToast('✓ 동기화 요청 전송됨 (시트 확인 필요)');
   } catch(e) {
-    showToast('연결 실패. URL을 확인해 주세요.');
+    console.error('syncAllToSheets error:', e);
+    showToast('연결 실패: ' + e.message);
   }
 }
 
@@ -1564,17 +1570,26 @@ async function loadFromSheets() {
   if (!state.settings.sheetsUrl) { showToast('Sheets URL을 먼저 입력해 주세요'); return; }
   showToast('불러오는 중...');
   try {
-    const res  = await fetch(state.settings.sheetsUrl + '?action=GET_ALL');
+    // GET 요청은 GAS가 리다이렉트를 거쳐 응답하므로 follow 설정
+    const res = await fetch(
+      state.settings.sheetsUrl + '?action=GET_ALL',
+      { method: 'GET', redirect: 'follow' }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     if (json.status !== 'ok') { showToast('불러오기 실패: ' + json.message); return; }
     if (json.weight) state.weight = json.weight;
-    if (json.cycles) state.cycles = json.cycles;
+    if (json.cycles) {
+      // UUID 없는 항목 마이그레이션
+      state.cycles = json.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
+    }
     saveLocal();
     renderAll();
     closeSettings();
     showToast('✓ 시트에서 불러오기 완료');
   } catch(e) {
-    showToast('연결 실패. URL을 확인해 주세요.');
+    console.error('loadFromSheets error:', e);
+    showToast('불러오기 실패: ' + e.message);
   }
 }
 
