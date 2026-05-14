@@ -1,137 +1,145 @@
-# 🌸 사이클 트래커 – 설치 및 설정 가이드
+# 🥗 Body Log – 쿠쿠 식단 기록
+
+개인의 식단 및 활동량을 체계적으로 기록하고, AI로 맞춤형 영양 피드백을 받는 Full-Stack 웹 애플리케이션입니다.
+
+---
+
+## 🚀 프로젝트 개요
+
+- **목적**: 간편한 식단·활동량 기록과 AI 기반 개인 맞춤 피드백 제공
+- **주요 타겟**: 체중 관리 및 식습관 개선을 목표로 하는 사용자
+- **형태**: PWA (Progressive Web App) — 모바일 홈 화면에 설치 가능
+
+---
+
+## 🛠 기술 스택
+
+### Frontend
+| 항목 | 내용 |
+|------|------|
+| Framework | React 19 (Functional Components, Hooks) |
+| Language | TypeScript (Strict Type Safety) |
+| Bundler | Vite |
+| Styling | Tailwind CSS 4.0 (Native CSS-in-JS utility blocks) |
+| Animation | Framer Motion (`motion/react`) |
+| PWA | Service Worker + Manifest 기반 모바일 웹 앱 지원 |
+
+### Backend & Database
+| 항목 | 내용 |
+|------|------|
+| Serverless Backend | Google Apps Script (GAS) |
+| Database | Google Sheets (Spreadsheet DB) |
+| 통신 방식 | REST API (doGet / doPost) 기반 비동기 통신 |
+
+### AI
+| 항목 | 내용 |
+|------|------|
+| AI 엔진 | Google Gemini 1.5 Flash (`@google/generative-ai`) |
+| 분석 범위 | 식단 기록 + 활동 데이터 → 종합 리포트 생성 |
+| 조언 기준 | TDEE(총 에너지 소비량) 기반 정밀 피드백 |
+
+---
+
+## 📋 핵심 기능
+
+### 🍴 식단 기록 및 관리
+- **끼니별 기록**: 아침 · 점심 · 간식 · 저녁 구분 입력
+- **계획 vs 실제**: 식단 계획(PLANNED)과 실제 섭취(ACTUAL) 상태 분리 관리
+- **영양 성분 자동 계산**: 즐겨찾기 기반 식재료 DB 연동 → 탄수화물·단백질·지방·당·식이섬유 자동 요약
+- **일일 목표 설정**: 목표 칼로리 및 영양성분 설정, 전날 목표치를 오늘 초기값으로 자동 승계
+- **매크로 자동 계산기**: 목표 칼로리 입력 시 탄:단:지 비율(단백질 120g 고정, 나머지 7:3 자동 배분)에 따라 각 영양소 자동 계산
+
+### 🏃 활동 및 건강 일기
+- **활동 로그**: 걸음 수, 활동 칼로리, 총 소모 칼로리 기록 및 사진 업로드 지원
+- **건강 일기**: 텍스트 기반 일일 컨디션·일기 기록 (UUID 기반 업데이트)
+- **메모 시스템**: 간단한 텍스트 메모 (무한 스크롤, 최신순 정렬)
+
+### 🤖 AI 영양 추천
+일일 섭취량 및 활동량을 기반으로 Gemini AI가 4개 섹션의 분석 리포트를 생성합니다.
+
+| 섹션 | 내용 |
+|------|------|
+| `[총평]` | 오늘 하루 전반적인 식단·활동 총평 |
+| `[활동량 평가]` | 걸음 수 및 소모 칼로리 기반 활동 평가 |
+| `[식단 평가]` | 섭취 칼로리·영양 균형 평가 |
+| `[응원과 추천]` | 맞춤형 개선 제안 및 응원 메시지 |
+
+- 중복 요청 방지 로직(Ref / Refetch guard) 탑재
+- 분석 결과 Google Sheets에 자동 저장
+
+---
+
+## 💾 데이터 아키텍처
+
+Google Sheets를 DB로 사용하며, 시트별 역할은 다음과 같습니다.
+
+| 시트 이름 | 설명 | 주요 필드 |
+|:---|:---|:---|
+| `meals` | 식단 기록 | uuid, date, type, status, kcal, carbs, protein, fat… |
+| `ingredients` | 식재료 DB | uuid, name, base_amount, kcal, is_bookmarked… |
+| `diaries` | 건강 일기 | uuid, date, content, updated_at |
+| `activity_logs` | 활동 로그 | uuid, date, steps, calories, image_url… |
+| `AI_Recommendations` | AI 조언 내역 | date, advice, created_at |
+| `nutrient_targets` | 일일 영양 목표 | date, kcal, carbs, protein, fat |
+| `memos` | 메모 | id, content, createdat |
+
+---
 
 ## 📁 파일 구성
 
 ```
-cycle-tracker/
-├── index.html     ← PWA 메인 앱 (이것만 있으면 앱 작동)
-├── manifest.json  ← PWA 설치 설정
-├── sw.js          ← 서비스 워커 (오프라인 지원)
-└── Code.gs        ← Google Apps Script (스프레드시트 연동)
+body-log/
+├── index.html       ← PWA 메인 앱 (React SPA 진입점)
+├── manifest.json    ← PWA 설치 설정
+├── sw.js            ← Service Worker (오프라인 지원)
+├── GAS.gs           ← Google Apps Script (백엔드 + DB 연동)
+├── icon-192.png     ← 앱 아이콘 (192×192)
+└── icon-512.png     ← 앱 아이콘 (512×512)
 ```
 
 ---
 
-## 🚀 1단계: PWA 앱 배포
+## 🚀 배포 방법
 
-### 방법 A: GitHub Pages (무료, 추천)
+### 1단계: PWA 앱 배포
+
+**방법 A: GitHub Pages (무료, 추천)**
 1. GitHub 저장소 생성
-2. `index.html`, `manifest.json`, `sw.js` 업로드
-3. Settings → Pages → Source: main 브랜치 선택
-4. 생성된 URL (`https://username.github.io/repo`)을 스마트폰 브라우저에서 열기
-5. 브라우저 메뉴 → "홈 화면에 추가" 탭하면 앱 설치 완료 📱
+2. 파일 전체 업로드
+3. Settings → Pages → Source: `main` 브랜치 선택
+4. 생성된 URL을 스마트폰 브라우저에서 열기
+5. 브라우저 메뉴 → "홈 화면에 추가" → 앱 설치 완료 📱
 
-### 방법 B: Netlify (드래그앤드롭)
-1. [netlify.com](https://netlify.com) 접속
-2. `cycle-tracker` 폴더를 드래그앤드롭으로 업로드
-3. 자동으로 URL 생성됨
-
-### 방법 C: 로컬 테스트
+**방법 B: 로컬 테스트**
 ```bash
 # Python 3
 python -m http.server 8080
 # Node.js
 npx serve .
 ```
-브라우저에서 `http://localhost:8080` 접속
-
 > ⚠️ Service Worker는 HTTPS 또는 localhost에서만 작동합니다.
 
 ---
 
-## 📊 2단계: Google Sheets 연동 (선택)
+### 2단계: Google Sheets 연동
 
-데이터를 Google 스프레드시트에 백업/동기화하려면:
-
-### 2-1. 스프레드시트 준비
-1. [Google Drive](https://drive.google.com) → 새 스프레드시트 생성
-2. 이름: "사이클 트래커 데이터" (자유롭게 변경 가능)
-
-### 2-2. Apps Script 설정
-1. 스프레드시트 상단 메뉴: **확장 프로그램 → Apps Script**
-2. 기존 코드 전체 선택 후 **`Code.gs` 내용 전체 붙여넣기**
-3. 💾 저장 (Ctrl+S 또는 상단 저장 버튼)
-
-### 2-3. 웹 앱으로 배포
-1. 상단 **"배포"** 버튼 클릭 → **"새 배포"**
-2. 유형 선택: ⚙️ **웹 앱**
-3. 설정:
-   - 설명: `사이클 트래커 API`
-   - 다음 사용자로 실행: **나 (본인 이메일)**
-   - 액세스 권한: **모든 사용자(익명 포함)**
-4. **"배포"** 클릭 → Google 계정 권한 허용
-5. 생성된 **웹 앱 URL** 복사
-
-### 2-4. PWA 앱에 URL 입력
-1. 앱 오른쪽 상단 ⚙️ 버튼 탭
-2. **Google Sheets URL** 칸에 복사한 URL 붙여넣기
-3. **"저장하기"** 탭
-
-이제부터 생리 시작일 기록 시 스프레드시트에도 자동 저장됩니다! ✅
+1. Google Drive에서 새 스프레드시트 생성
+2. **확장 프로그램 → Apps Script** 진입
+3. `GAS.gs` 내용 전체를 붙여넣고 저장
+4. **배포 → 새 배포 → 웹 앱** 선택
+   - 실행 사용자: 본인 계정
+   - 액세스 권한: **모든 사용자 (익명 포함)**
+5. 생성된 웹 앱 URL을 앱 설정에 입력
 
 ---
 
-## 📱 앱 기능 설명
+## ⚙️ 주요 기술 특이사항
 
-### 🏠 홈 탭
-| 항목 | 설명 |
-|------|------|
-| 상태 배너 | 오늘이 어떤 날인지 한눈에 표시 |
-| 다음 생리 예정 | D-day 카운트다운 |
-| 통계 | 평균 주기, 규칙성 등 |
-
-### 📅 달력 탭
-| 색상 | 의미 |
-|------|------|
-| 🔴 진한 분홍 | 생리 시작일 (직접 입력한 날) |
-| 🩷 연한 분홍 | 생리 기간 |
-| 💜 연한 보라 | 배란 예정일 |
-| 💙 연한 파랑 | 가임 기간 |
-| 💛 연한 노랑 | **황금기** (생리 후 1주일, 컨디션 최고 구간) |
-
-> 달력에서 날짜를 탭하면 해당 날짜가 기록 입력란에 자동 입력됩니다.
-
-### ✏️ 기록 탭
-- 생리 시작일 직접 입력 및 삭제
-- 과거 기록 내역 확인
+- **KST 전용 날짜 처리**: 한국 표준시(UTC+9) 기준 정밀 날짜·시간 동기화
+- **Optimistic UI**: GAS 응답 딜레이를 감안한 로컬 상태 선반영 + 로딩 처리
+- **토스트 알림**: 저장·수정·복사 등 작업 결과를 즉각 피드백하는 UI
+- **관리자 접근 제어**: 특정 UI 요소 다회 클릭을 통한 스프레드시트 링크 노출 로직
 
 ---
 
-## 🧮 주기 계산 방법
-
-- **평균 주기**: 최근 기록들의 간격 평균 (기록 부족 시 설정값 28일 사용)
-- **배란 예정일**: 시작일 + (주기 ÷ 2) - 2일
-- **가임 기간**: 배란일 ±2일
-- **황금기**: 생리 종료 후 7일 (피부, 컨디션, 운동 효율 최고 구간)
-- **예측 범위**: 향후 3주기까지 달력에 미리 표시
-
----
-
-## ⚙️ 설정 항목
-
-| 항목 | 기본값 | 설명 |
-|------|--------|------|
-| 기본 주기 | 28일 | 기록이 없을 때 사용 |
-| 기본 생리 기간 | 5일 | 황금기 시작일 계산에 사용 |
-| Google Sheets URL | 없음 | 연동 시 입력 |
-
----
-
-## 🔒 데이터 보안
-
-- 모든 데이터는 **기기 내 localStorage에만 저장** (Google Sheets 미연동 시)
-- Google Sheets 연동 시 본인 Google Drive에만 저장
-- 서버에 개인 정보가 전송되지 않습니다
-
----
-
-## 🆘 문제 해결
-
-**Q: 달력에 예측이 표시되지 않아요**
-→ 기록 탭에서 최소 1개 이상의 생리 시작일을 입력하세요.
-
-**Q: Google Sheets 연동이 안 돼요**
-→ Apps Script 배포 시 액세스 권한을 "모든 사용자(익명 포함)"으로 설정했는지 확인하세요.
-
-**Q: 앱을 홈 화면에 추가할 수 없어요**
-→ HTTPS URL에서 접속해야 합니다. GitHub Pages나 Netlify를 사용하세요.
+*Developed with Google AI Studio & Gemini API*
