@@ -132,7 +132,7 @@
     .cal-day.empty{cursor:default;min-height:58px}
     .cal-day .dn{font-size:13px;font-weight:400;color:var(--700);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;margin-bottom:3px}
     /* today: purple border */
-    .cal-day.today{border:2.5px solid #a78bfa}
+    .cal-day.today{border:2.5px solid #ec4899}
     .cal-day.today .dn{color:var(--black);font-weight:700}
     /* phases */
     .cal-day.c-period{background:var(--150)}
@@ -150,7 +150,7 @@
     .cal-day.today.c-golden{background:#fff3e0}
     .cal-day.today.c-fertile{background:var(--150)}
     .cal-day.today.c-premenstrual{background:#fce4ec}
-    .cal-day.today.c-ovul{background:var(--900);border-color:#c4b5fd}
+    .cal-day.today.c-ovul{background:var(--900);border-color:#f9a8d4}
     .cal-day.today.c-ovul .dn{color:#fff}
     /* phase tags */
     .dtag{font-size:7.5px;font-weight:500;padding:2px 4px;border-radius:4px;line-height:1.2;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;margin-bottom:2px}
@@ -442,7 +442,7 @@
           <span><b style="color:var(--400);font-weight:500">배란예정</b> — 일시적 체중 변화 가능</span>
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
-          <div style="width:18px;height:18px;border-radius:4px;background:var(--white);border:2.5px solid #a78bfa;flex-shrink:0;margin-top:1px"></div>
+          <div style="width:18px;height:18px;border-radius:4px;background:var(--white);border:2.5px solid #ec4899;flex-shrink:0;margin-top:1px"></div>
           <span><b style="color:#7c3aed;font-weight:500">보라 테두리</b> — 오늘 날짜</span>
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
@@ -977,11 +977,11 @@ function renderTrend(allE) {
 
 /* ═══════════ HORMONE GRAPH ═══════════ */
 function renderHormoneGraph() {
-  const noData  = document.getElementById('hormoneNoData');
-  const wrap    = document.querySelector('.hormone-wrap');
-  const legend  = document.querySelector('.hormone-legend');
-  const phases  = document.getElementById('hormonePhases');
-  const marker  = document.getElementById('hormoneMarker');
+  const noData = document.getElementById('hormoneNoData');
+  const wrap   = document.querySelector('.hormone-wrap');
+  const legend = document.querySelector('.hormone-legend');
+  const phases = document.getElementById('hormonePhases');
+  const marker = document.getElementById('hormoneMarker');
 
   const s = getSortedCycles();
   if (!s.length) {
@@ -990,6 +990,7 @@ function renderHormoneGraph() {
     legend.style.display  = 'none';
     phases.style.display  = 'none';
     marker.style.display  = 'none';
+    document.getElementById('hormoneSelMarker').style.display = 'none';
     return;
   }
   noData.style.display  = 'none';
@@ -997,65 +998,153 @@ function renderHormoneGraph() {
   legend.style.display  = '';
   phases.style.display  = '';
 
-  const cl = avgCycleLen();   // 주기 길이 (일)
-  const pl = state.settings.defaultPeriodLen;
+  // ── X축: 현재 캘린더 월의 1일~말일 ──
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const N = daysInMonth;
 
-  // ── 호르몬 커브 생성 (0..cl-1 일차 기준) ──
-  // 에스트로겐: 생리기간 중 낮음 → 배란 직전 1차 피크 → 배란 후 소폭 상승 → 생리 전 하강
-  // 프로게스테론: 배란 전 낮음 → 황체기에 상승 피크 → 생리 전 하강
-  const N = cl;
-  const ovDay   = Math.round(cl / 2) - 2;  // 배란일
-  const estro   = [];
-  const progest = [];
-
-  for (let d = 0; d < N; d++) {
-    // 에스트로겐 — 두 개의 가우시안 피크 합산
-    const e1 = 0.95 * Math.exp(-Math.pow(d - (ovDay - 1), 2) / (2 * Math.pow(cl * 0.09, 2)));
-    const e2 = 0.45 * Math.exp(-Math.pow(d - (ovDay + Math.round(cl * 0.22)), 2) / (2 * Math.pow(cl * 0.10, 2)));
-    const eBase = 0.08 + (d < pl ? -0.05 * (1 - d / pl) : 0);
-    estro.push(Math.max(0.04, Math.min(1.0, e1 + e2 + eBase)));
-
-    // 프로게스테론 — 황체기 단일 피크
-    const lutealPeak = ovDay + Math.round(cl * 0.22);
-    const p1 = 0.92 * Math.exp(-Math.pow(d - lutealPeak, 2) / (2 * Math.pow(cl * 0.11, 2)));
-    progest.push(Math.max(0.03, Math.min(1.0, p1 + 0.04)));
+  // 각 날짜 문자열 배열
+  const datestrs = [];
+  for (let d = 1; d <= N; d++) {
+    datestrs.push(calYear + '-' + pad(calMonth + 1) + '-' + pad(d));
   }
 
-  // ── Canvas 그리기 ──
+  const cl = avgCycleLen();
+  const pl = state.settings.defaultPeriodLen;
+  const ovDay = Math.round(cl / 2) - 2;
+
+  // ── 각 날짜의 생리주기 내 일수(dayInCycle) 계산 ──
+  // → 호르몬값은 이 dayInCycle 기반 가우시안으로 계산
+  function getDayInCycle(ds) {
+    const dt = new Date(ds);
+    // 가장 최근 생리 시작일 찾기 (과거 + 예측 포함)
+    const sorted = getSortedCycles();
+    if (!sorted.length) return null;
+    const last = new Date(sorted[0].start);
+    // 해당 날짜가 속하는 주기 시작일 계산
+    let diff = Math.floor((dt - last) / 86400000);
+    // 미래 예측: diff가 음수면 이전 주기로
+    if (diff < 0) {
+      const cycles = Math.ceil(-diff / cl);
+      diff += cl * cycles;
+    }
+    return diff % cl;
+  }
+
+  // ── 호르몬 커브 생성 (dayInCycle 기반) ──
+  function hormoneAt(dic) {
+    const e1    = 0.95 * Math.exp(-Math.pow(dic - (ovDay - 1), 2) / (2 * Math.pow(cl * 0.09, 2)));
+    const e2    = 0.45 * Math.exp(-Math.pow(dic - (ovDay + Math.round(cl * 0.22)), 2) / (2 * Math.pow(cl * 0.10, 2)));
+    const eBase = 0.08 + (dic < pl ? -0.05 * (1 - dic / pl) : 0);
+    const estro = Math.max(0.04, Math.min(1.0, e1 + e2 + eBase));
+
+    const lutealPeak = ovDay + Math.round(cl * 0.22);
+    const p1    = 0.92 * Math.exp(-Math.pow(dic - lutealPeak, 2) / (2 * Math.pow(cl * 0.11, 2)));
+    const prog  = Math.max(0.03, Math.min(1.0, p1 + 0.04));
+
+    return { estro, prog };
+  }
+
+  // 각 날짜에 대해 dayInCycle → 호르몬값 계산
+  const estroArr  = [];
+  const progestArr = [];
+  const dicArr    = [];
+
+  for (let i = 0; i < N; i++) {
+    const dic = getDayInCycle(datestrs[i]);
+    dicArr.push(dic !== null ? dic : 0);
+    const h = hormoneAt(dic !== null ? dic : 0);
+    estroArr.push(h.estro);
+    progestArr.push(h.prog);
+  }
+
+  // ── 수분저류량 (7일 지연) ──
+  const DELAY = 7;
+  const waterRaw = [];
+  for (let i = 0; i < N; i++) {
+    // 7일 전 날짜의 호르몬값 참조
+    const srcIdx = i - DELAY;
+    let dic7;
+    if (srcIdx >= 0) {
+      dic7 = dicArr[srcIdx];
+    } else {
+      // 이전 달로 넘어가면 dayInCycle wrap
+      dic7 = ((dicArr[0] - (DELAY - i)) % cl + cl) % cl;
+    }
+    const h7 = hormoneAt(dic7);
+    waterRaw.push(h7.estro + h7.prog);
+  }
+  const wMin  = Math.min(...waterRaw);
+  const wMax  = Math.max(...waterRaw);
+  const water = waterRaw.map(v => (v - wMin) / (wMax - wMin + 0.001));
+
+  // ── Canvas ──
   const canvas = document.getElementById('hormoneCanvas');
   const dpr    = window.devicePixelRatio || 1;
-  const W      = canvas.offsetWidth  || 300;
-  const H      = 130;
+  const W      = canvas.offsetWidth || 300;
+  const H      = 140;
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, W, H);
 
-  const padT = 10, padB = 6, padL = 2, padR = 2;
+  const padT = 10, padB = 22, padL = 4, padR = 4;
   const gW = W - padL - padR;
   const gH = H - padT - padB;
 
-  const xAt = d => padL + (d / (N - 1)) * gW;
+  // X/Y 변환 — X는 날짜 인덱스 기준
+  const xAt = i => padL + (i / (N - 1)) * gW;
   const yAt = v => padT + (1 - v) * gH;
 
-  // 구간 배경색
-  const ZONES = [
-    { from: 0,               to: pl,            color: 'rgba(235,235,235,0.55)', label: '생리기간' },
-    { from: pl,              to: pl + 7,         color: 'rgba(255,237,213,0.55)', label: '황금기' },
-    { from: pl + 7,          to: ovDay - 2,      color: 'rgba(247,247,250,0.4)',  label: '난포기' },
-    { from: ovDay - 2,       to: ovDay + 3,      color: 'rgba(221,214,254,0.45)', label: '배란' },
-    { from: ovDay + 3,       to: cl - 7,         color: 'rgba(247,247,250,0.4)',  label: '황체기' },
-    { from: cl - 7,          to: cl,             color: 'rgba(252,228,236,0.55)', label: '생리전' },
-  ];
-  ZONES.forEach(z => {
-    const x1 = xAt(Math.max(0, z.from));
-    const x2 = xAt(Math.min(N - 1, z.to));
-    ctx.fillStyle = z.color;
-    ctx.fillRect(x1, padT, x2 - x1, gH);
+  // ── 구간 배경 (달력 phase 기반) ──
+  const PHASE_COLOR = {
+    start:        'rgba(235,235,235,0.55)',
+    period:       'rgba(235,235,235,0.55)',
+    golden:       'rgba(255,237,213,0.65)',
+    fertile:      'rgba(221,214,254,0.35)',
+    ovul:         'rgba(221,214,254,0.55)',
+    premenstrual: 'rgba(252,228,236,0.65)',
+  };
+
+  // 연속 구간 병합해서 rect 그리기
+  let prevPhase = null, segStart = 0;
+  const flushSeg = (endI, ph) => {
+    const color = PHASE_COLOR[ph];
+    if (!color) return;
+    const x1 = xAt(segStart);
+    const x2 = xAt(Math.min(endI, N - 1));
+    ctx.fillStyle = color;
+    ctx.fillRect(x1, padT, x2 - x1 + (endI < N - 1 ? 0 : gW/N), gH);
+  };
+
+  for (let i = 0; i < N; i++) {
+    const starts = new Set(state.cycles.map(c => c.start));
+    const ep = starts.has(datestrs[i]) ? 'start' : (getPhase(datestrs[i]) || 'none');
+    if (ep !== prevPhase) {
+      if (prevPhase && prevPhase !== 'none') flushSeg(i - 1, prevPhase);
+      prevPhase = ep; segStart = i;
+    }
+    if (i === N - 1 && prevPhase && prevPhase !== 'none') flushSeg(i, prevPhase);
+  }
+
+  // ── X축 날짜 눈금 (1, 5, 10, 15, 20, 25, 말일) ──
+  ctx.fillStyle   = 'rgba(0,0,0,0.3)';
+  ctx.font        = '9px DM Sans, sans-serif';
+  ctx.textAlign   = 'center';
+  const tickDays  = [1, 5, 10, 15, 20, 25, N];
+  tickDays.forEach(d => {
+    const i = d - 1;
+    const x = xAt(i);
+    ctx.fillText(d, x, H - 5);
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth   = 1;
+    ctx.moveTo(x, padT + gH);
+    ctx.lineTo(x, padT + gH + 4);
+    ctx.stroke();
   });
 
-  // 가로 보조선
+  // ── 가로 보조선 ──
   ctx.strokeStyle = 'rgba(0,0,0,0.05)';
   ctx.lineWidth   = 1;
   [0.25, 0.5, 0.75].forEach(v => {
@@ -1063,7 +1152,7 @@ function renderHormoneGraph() {
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + gW, y); ctx.stroke();
   });
 
-  // 에스트로겐 곡선 (인디고)
+  // ── drawCurve helper ──
   const drawCurve = (data, color, lineW) => {
     ctx.beginPath();
     data.forEach((v, i) => {
@@ -1079,95 +1168,100 @@ function renderHormoneGraph() {
 
   // 에스트로겐 영역 채우기
   ctx.beginPath();
-  estro.forEach((v, i) => {
-    const x = xAt(i), y = yAt(v);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.lineTo(xAt(N - 1), yAt(0));
-  ctx.lineTo(xAt(0), yAt(0));
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(37,99,235,0.08)';
-  ctx.fill();
-
-  // ── 수분저류량 계산 (호르몬 합산 7일 지연) ──
-  const DELAY = 7;
-  const waterRaw = [];
-  for (let d = 0; d < N; d++) {
-    const src = d - DELAY;
-    // 경계 처리: 주기가 이어지므로 음수 인덱스는 이전 주기 끝으로 wrap
-    const ei = ((src % N) + N) % N;
-    waterRaw.push(estro[ei] + progest[ei]);
-  }
-  // 0~1 정규화
-  const wMin = Math.min(...waterRaw);
-  const wMax = Math.max(...waterRaw);
-  const water = waterRaw.map(v => (v - wMin) / (wMax - wMin));
+  estroArr.forEach((v, i) => { const x=xAt(i),y=yAt(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(xAt(N-1), yAt(0)); ctx.lineTo(xAt(0), yAt(0)); ctx.closePath();
+  ctx.fillStyle = 'rgba(37,99,235,0.07)'; ctx.fill();
 
   // 수분저류 영역 채우기
   ctx.beginPath();
-  water.forEach((v, i) => {
-    const x = xAt(i), y = yAt(v);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.lineTo(xAt(N - 1), yAt(0));
-  ctx.lineTo(xAt(0), yAt(0));
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(20,184,166,0.10)';
-  ctx.fill();
+  water.forEach((v, i) => { const x=xAt(i),y=yAt(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(xAt(N-1), yAt(0)); ctx.lineTo(xAt(0), yAt(0)); ctx.closePath();
+  ctx.fillStyle = 'rgba(20,184,166,0.08)'; ctx.fill();
 
-  drawCurve(estro,   '#2563eb', 2.0);
-  drawCurve(progest, '#e53935', 2.0);
-  drawCurve(water,   '#0d9488', 1.5);
+  drawCurve(estroArr,  '#2563eb', 2.0);
+  drawCurve(progestArr,'#e53935', 2.0);
+  drawCurve(water,     '#0d9488', 1.5);
 
-  // ── 오늘 위치 계산 ──
-  // 가장 최근 생리 시작일로부터 며칠째인지
-  const lastStart = new Date(s[0].start);
-  const todayDate = new Date(toYMD(new Date()));
-  let dayInCycle  = Math.floor((todayDate - lastStart) / 86400000);
+  // ── 오늘 마커 ──
+  const todayFull = toYMD(new Date());
+  const todayIdx  = datestrs.indexOf(todayFull);
+  const markerEl  = document.getElementById('hormoneMarker');
+  if (todayIdx >= 0) {
+    const leftPct = (xAt(todayIdx) / W * 100).toFixed(2) + '%';
+    markerEl.style.display = '';
+    markerEl.style.left    = leftPct;
+    const phase = getPhase(todayFull);
+    const LABEL = {start:'생리시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'측정비추'};
+    document.getElementById('hormoneMarkerLabel').textContent = '오늘' + (LABEL[phase]?' '+LABEL[phase]:'');
+  } else {
+    markerEl.style.display = 'none';
+  }
 
-  // 주기를 넘어가면 다음 예측 주기 기준
-  while (dayInCycle >= cl) dayInCycle -= cl;
-  if (dayInCycle < 0) dayInCycle = 0;
+  // ── 선택 날짜 마커 (selectedCalDay) ──
+  updateHormoneSelMarkerByDatestrs(datestrs);
 
-  const markerEl = document.getElementById('hormoneMarker');
-  const pct      = dayInCycle / (N - 1);          // 0~1
-  const leftPx   = padL + pct * gW;               // canvas 내 픽셀
+  // ── 하단 구간 레이블 (오늘 기준) ──
+  // 현재 월에서 오늘이 있으면 오늘 위상, 없으면 1일 위상 기준
+  const refDate    = todayIdx >= 0 ? todayFull : datestrs[0];
+  const refPhase   = getPhase(refDate) || 'none';
+  const PHASE_SEGMENTS = ['생리기간','황금기','난포기','배란','황체기','생리전'];
+  const PHASE_MAP_SEG  = {start:'생리기간',period:'생리기간',golden:'황금기',fertile:'배란',ovul:'배란',premenstrual:'생리전'};
+  const activeSegLabel = PHASE_MAP_SEG[refPhase] || '';
 
-  // canvas 부모 기준 % 위치
-  markerEl.style.display = '';
-  markerEl.style.left    = (leftPx / W * 100).toFixed(2) + '%';
-
-  // 오늘 레이블: 구간명 표시
-  const zone = ZONES.find(z => dayInCycle >= z.from && dayInCycle < z.to);
-  document.getElementById('hormoneMarkerLabel').textContent =
-    'D+' + dayInCycle + (zone ? ' ' + zone.label : '');
-
-  // ── 구간 레이블 행 ──
   phases.innerHTML = '';
-  ZONES.forEach(z => {
-    const seg  = document.createElement('div');
-    seg.className = 'hormone-phase-seg';
-    const ratio = (Math.min(N - 1, z.to) - Math.max(0, z.from)) / N;
-    seg.style.flex = String(ratio);
-
-    const active = (dayInCycle >= z.from && dayInCycle < z.to);
-    const ZONE_STYLE = {
-      '생리기간': { bg: '#f0f0f0',   color: '#666' },
-      '황금기':   { bg: '#fff3e0',   color: '#e65100' },
-      '난포기':   { bg: '#f5f5f5',   color: '#888' },
-      '배란':     { bg: '#ede9fe',   color: '#7c3aed' },
-      '황체기':   { bg: '#f5f5f5',   color: '#888' },
-      '생리전':   { bg: '#fce4ec',   color: '#880e4f' },
-    };
-    const st = ZONE_STYLE[z.label] || { bg: '#f5f5f5', color: '#888' };
-    seg.style.background = active ? st.bg   : 'transparent';
-    seg.style.color      = active ? st.color: 'var(--300)';
-    seg.style.fontWeight = active ? '700'   : '400';
-    seg.textContent      = z.label;
-    phases.appendChild(seg);
+  // 구간 비율은 주기 길이 기반 고정
+  const SEG_DEF = [
+    {label:'생리기간', days: pl},
+    {label:'황금기',   days: 7},
+    {label:'난포기',   days: Math.max(1, ovDay - 2 - (pl+7))},
+    {label:'배란',     days: 5},
+    {label:'황체기',   days: Math.max(1, cl - 7 - (ovDay+3))},
+    {label:'생리전',   days: 7},
+  ];
+  const ZONE_STYLE = {
+    '생리기간':{ bg:'#f0f0f0', color:'#666' },
+    '황금기':  { bg:'#fff3e0', color:'#e65100' },
+    '난포기':  { bg:'#f5f5f5', color:'#999' },
+    '배란':    { bg:'#ede9fe', color:'#7c3aed' },
+    '황체기':  { bg:'#f5f5f5', color:'#999' },
+    '생리전':  { bg:'#fce4ec', color:'#880e4f' },
+  };
+  SEG_DEF.forEach(seg => {
+    const el    = document.createElement('div');
+    el.className = 'hormone-phase-seg';
+    el.style.flex = String(seg.days);
+    const active  = seg.label === activeSegLabel;
+    const st      = ZONE_STYLE[seg.label] || { bg:'#f5f5f5', color:'#999' };
+    el.style.background = active ? st.bg      : 'transparent';
+    el.style.color      = active ? st.color   : 'var(--300)';
+    el.style.fontWeight = active ? '700'      : '400';
+    el.textContent = seg.label;
+    phases.appendChild(el);
   });
 }
 
+// 선택 마커를 현재 월의 datestrs 기준으로 업데이트
+function updateHormoneSelMarkerByDatestrs(datestrs) {
+  const selMarker = document.getElementById('hormoneSelMarker');
+  if (!selectedCalDay || !datestrs) { selMarker.style.display='none'; return; }
+  const idx = datestrs.indexOf(selectedCalDay);
+  if (idx < 0) { selMarker.style.display='none'; return; }
+
+  const canvas  = document.getElementById('hormoneCanvas');
+  const W       = canvas.offsetWidth || 300;
+  const N       = datestrs.length;
+  const padL    = 4, padR = 4;
+  const gW      = W - padL - padR;
+  const leftPx  = padL + (idx / (N - 1)) * gW;
+
+  selMarker.style.display = '';
+  selMarker.style.left    = (leftPx / W * 100).toFixed(2) + '%';
+
+  const phase = getPhase(selectedCalDay);
+  const LABEL = {start:'생리시작',period:'생리기간',golden:'황금기',ovul:'배란예정',fertile:'가임기',premenstrual:'측정비추'};
+  document.getElementById('hormoneSelLabel').textContent =
+    pad(parseInt(selectedCalDay.split('-')[2])) + '일' + (LABEL[phase]?' '+LABEL[phase]:'');
+}
 /* ═══════════ CALENDAR ═══════════ */
 function renderCalendar() {
   const DOW = ['일','월','화','수','목','금','토'];
@@ -1323,37 +1417,13 @@ function openEntrySelected() {
 }
 
 function updateHormoneSelMarker(ds) {
-  const selMarker = document.getElementById('hormoneSelMarker');
-  const s = getSortedCycles();
-  if (!s.length || !ds) { selMarker.style.display='none'; return; }
-
-  const cl          = avgCycleLen();
-  const lastStart   = new Date(s[0].start);
-  const selDate     = new Date(ds);
-  let   dayInCycle  = Math.floor((selDate - lastStart) / 86400000);
-  while (dayInCycle >= cl)  dayInCycle -= cl;
-  while (dayInCycle < 0)    dayInCycle += cl;
-
-  const canvas  = document.getElementById('hormoneCanvas');
-  const W       = canvas.offsetWidth || 300;
-  const padL    = 2, padR = 2;
-  const gW      = W - padL - padR;
-  const pct     = dayInCycle / (cl - 1);
-  const leftPx  = padL + pct * gW;
-
-  selMarker.style.display = '';
-  selMarker.style.left    = (leftPx / W * 100).toFixed(2) + '%';
-
-  const ZONES = [
-    {from:0,           to:state.settings.defaultPeriodLen,                   label:'생리기간'},
-    {from:state.settings.defaultPeriodLen, to:state.settings.defaultPeriodLen+7, label:'황금기'},
-    {from:state.settings.defaultPeriodLen+7, to:Math.round(cl/2)-4,          label:'난포기'},
-    {from:Math.round(cl/2)-4, to:Math.round(cl/2)+1,                         label:'배란'},
-    {from:Math.round(cl/2)+1, to:cl-7,                                       label:'황체기'},
-    {from:cl-7,        to:cl,                                                 label:'생리전'},
-  ];
-  const zone = ZONES.find(z => dayInCycle >= z.from && dayInCycle < z.to);
-  document.getElementById('hormoneSelLabel').textContent = 'D+'+dayInCycle+(zone?' '+zone.label:'');
+  // 현재 캘린더 월의 datestrs 재생성 후 위임
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const datestrs = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    datestrs.push(calYear + '-' + pad(calMonth + 1) + '-' + pad(d));
+  }
+  updateHormoneSelMarkerByDatestrs(datestrs);
 }
 
 function switchTab(name, btn) {
@@ -1371,8 +1441,18 @@ function switchTab(name, btn) {
     if (sel) sel.style.display = 'none';
   }
 }
-function prevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
-function nextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function prevMonth() {
+  calMonth--; if(calMonth<0){calMonth=11;calYear--;}
+  selectedCalDay = null;
+  document.getElementById('selDayBar').style.display = 'none';
+  renderCalendar(); renderHormoneGraph();
+}
+function nextMonth() {
+  calMonth++; if(calMonth>11){calMonth=0;calYear++;}
+  selectedCalDay = null;
+  document.getElementById('selDayBar').style.display = 'none';
+  renderCalendar(); renderHormoneGraph();
+}
 function openSettings()  { document.getElementById('settingsOverlay').classList.add('active'); }
 function closeSettingsOutside(e) { if(e.target===document.getElementById('settingsOverlay')) closeSettings(); }
 function closeSettings() { document.getElementById('settingsOverlay').classList.remove('active'); }
