@@ -545,6 +545,27 @@
   </div>
 </div>
 
+<!-- CYCLE EDIT OVERLAY -->
+<div class="overlay" id="cycleEditOverlay" onclick="closeCycleEditOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">생리 시작일 수정</div>
+      <button class="modal-close" onclick="closeCycleEdit()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--400);font-family:monospace;margin-bottom:14px" id="cycleEditId"></div>
+    <div class="field" style="margin-bottom:16px">
+      <label>생리 시작일</label>
+      <input type="date" id="cycleEditDate" style="padding:12px 14px;border:1px solid var(--200);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--black);background:var(--white);outline:none;width:100%"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-del-entry" onclick="confirmDeleteCycleEdit()">삭제</button>
+      <button class="btn-save" onclick="saveCycleEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS OVERLAY -->
 <div class="overlay" id="settingsOverlay" onclick="closeSettingsOutside(event)">
   <div class="settings-panel">
@@ -553,6 +574,8 @@
     <div class="set-row"><label>생리 기간 (일)</label><input type="number" id="defPeriodLen" min="2" max="10" value="5"/></div>
     <div class="set-row"><label>Google Sheets URL</label><input type="text" id="sheetsUrl" placeholder="Web App URL"/></div>
     <button class="btn-full" onclick="saveSettings()">저장</button>
+    <button class="btn-full" style="margin-top:8px;background:var(--800)" onclick="syncAllToSheets()">☁ 시트로 전체 동기화</button>
+    <button class="btn-full" style="margin-top:8px;background:var(--50);color:var(--black);border:1px solid var(--200)" onclick="loadFromSheets()">↓ 시트에서 불러오기</button>
   </div>
 </div>
 
@@ -581,7 +604,10 @@ function loadLocal() {
   try {
     const d = JSON.parse(localStorage.getItem('bodyLogData') || '{}');
     if (d.weight)   state.weight   = d.weight;
-    if (d.cycles)   state.cycles   = d.cycles;
+    if (d.cycles) {
+      // 기존 데이터에 id 없는 항목에 UUID 자동 부여 (마이그레이션)
+      state.cycles = d.cycles.map(c => c.id ? c : { ...c, id: generateUUID() });
+    }
     if (d.settings) state.settings = Object.assign({}, state.settings, d.settings);
     document.getElementById('defCycleLen').value  = state.settings.defaultCycleLen;
     document.getElementById('defPeriodLen').value = state.settings.defaultPeriodLen;
@@ -692,6 +718,7 @@ function saveEntry() {
 function deleteEntry() {
   delete state.weight[modalDate];
   saveLocal(); closeEntry(); renderAll(); showToast('삭제됐어요');
+  if (state.settings.sheetsUrl) syncSheets('WEIGHT_DELETE', modalDate);
 }
 
 /* Inline home form */
@@ -710,19 +737,49 @@ function saveInlineEntry() {
 }
 
 /* ═══════════ CYCLE CRUD ═══════════ */
+
+/** UUID v4 생성 (crypto.randomUUID 지원 여부에 따라 폴리필) */
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // 폴리필
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 function addCycle() {
   const val = document.getElementById('cycleStartInput').value;
   if (!val) { showToast('날짜를 선택해 주세요'); return; }
-  if (state.cycles.some(c=>c.start===val)) { showToast('이미 기록된 날짜예요'); return; }
-  state.cycles.push({start:val});
+  if (state.cycles.some(c => c.start === val)) { showToast('이미 기록된 날짜예요'); return; }
+  const newCycle = { id: generateUUID(), start: val };
+  state.cycles.push(newCycle);
   saveLocal(); renderAll(); showToast('생리 기록 완료');
-  if (state.settings.sheetsUrl) syncSheets('CYCLE_ADD', val);
+  if (state.settings.sheetsUrl) syncSheets('CYCLE_ADD', val, { id: newCycle.id });
 }
-function deleteCycle(idx) {
-  const r = state.cycles[idx];
+
+function deleteCycle(id) {
+  const idx = state.cycles.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  const removed = state.cycles[idx];
   state.cycles.splice(idx, 1);
   saveLocal(); renderAll(); showToast('삭제됐어요');
-  if (state.settings.sheetsUrl) syncSheets('CYCLE_DELETE', r.start);
+  if (state.settings.sheetsUrl) syncSheets('CYCLE_DELETE', removed.start, { id: removed.id });
+}
+
+function updateCycle(id, newStart) {
+  const idx = state.cycles.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  // 다른 날짜와 중복 체크
+  if (state.cycles.some((c, i) => i !== idx && c.start === newStart)) {
+    showToast('이미 기록된 날짜예요'); return;
+  }
+  const oldStart = state.cycles[idx].start;
+  state.cycles[idx].start = newStart;
+  saveLocal(); renderAll(); showToast('수정 완료');
+  if (state.settings.sheetsUrl) syncSheets('CYCLE_UPDATE', newStart, { id, oldStart });
 }
 
 /* ═══════════ SYNC ═══════════ */
@@ -1348,23 +1405,48 @@ function renderCycleTab() {
   if (!s.length) { list.innerHTML='<div class="empty-state">아직 기록이 없어요</div>'; return; }
   list.innerHTML = '';
   s.forEach((c, i) => {
-    const origIdx = state.cycles.findIndex(x => x.start === c.start);
     let pill = '';
-    if (i < s.length-1) {
-      const diff = Math.round((new Date(s[i].start)-new Date(s[i+1].start))/86400000);
+    if (i < s.length - 1) {
+      const diff = Math.round((new Date(s[i].start) - new Date(s[i+1].start)) / 86400000);
       pill = '<span style="font-size:11px;background:var(--100);border-radius:100px;padding:2px 10px;color:var(--500);font-weight:500;margin-top:3px;display:inline-block">주기 '+diff+'일</span>';
     }
-    const row = document.createElement('div'); row.className='h-item';
+    const row = document.createElement('div'); row.className = 'h-item';
     row.innerHTML =
-      '<div><div class="h-date">' + fmtDateKo(new Date(c.start)) + '</div>' + pill + '</div>'
-      + '<button class="h-del" onclick="deleteCycle('+origIdx+')" aria-label="삭제">'
+      '<div style="flex:1"><div class="h-date">' + fmtDateKo(new Date(c.start)) + '</div>' + pill
+      + '<div style="font-size:10px;color:var(--300);margin-top:3px;font-family:monospace">' + (c.id || '—') + '</div></div>'
+      + '<div style="display:flex;gap:6px;align-items:center">'
+      + '<button class="tl-edit" onclick="openCycleEdit(\'' + c.id + '\',\'' + c.start + '\')" style="font-size:12px;padding:6px 12px">수정</button>'
+      + '<button class="h-del" onclick="deleteCycle(\'' + c.id + '\')" aria-label="삭제">'
       + '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>'
-      + '</button>';
+      + '</button></div>';
     list.appendChild(row);
   });
 }
 
 /* ═══════════ UI HELPERS ═══════════ */
+/* ── 생리 기록 수정 모달 ── */
+let editingCycleId = null;
+function openCycleEdit(id, start) {
+  editingCycleId = id;
+  document.getElementById('cycleEditId').textContent = 'ID: ' + id;
+  document.getElementById('cycleEditDate').value = start;
+  document.getElementById('cycleEditOverlay').classList.add('active');
+}
+function closeCycleEdit() { document.getElementById('cycleEditOverlay').classList.remove('active'); }
+function closeCycleEditOutside(e) { if (e.target === document.getElementById('cycleEditOverlay')) closeCycleEdit(); }
+function saveCycleEdit() {
+  const newStart = document.getElementById('cycleEditDate').value;
+  if (!newStart) { showToast('날짜를 선택해 주세요'); return; }
+  updateCycle(editingCycleId, newStart);
+  closeCycleEdit();
+}
+function confirmDeleteCycleEdit() {
+  if (confirm('이 생리 기록을 삭제하시겠어요?')) {
+    deleteCycle(editingCycleId);
+    closeCycleEdit();
+  }
+}
+
 function toggleInlineForm() {
   const form  = document.getElementById('inlineForm');
   const arrow = document.getElementById('formToggleArrow');
@@ -1456,6 +1538,46 @@ function nextMonth() {
 function openSettings()  { document.getElementById('settingsOverlay').classList.add('active'); }
 function closeSettingsOutside(e) { if(e.target===document.getElementById('settingsOverlay')) closeSettings(); }
 function closeSettings() { document.getElementById('settingsOverlay').classList.remove('active'); }
+/* 앱 전체 데이터 → 시트 일괄 동기화 */
+async function syncAllToSheets() {
+  if (!state.settings.sheetsUrl) { showToast('Sheets URL을 먼저 입력해 주세요'); return; }
+  showToast('동기화 중...');
+  try {
+    const res = await fetch(state.settings.sheetsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'SYNC_ALL',
+        weight: state.weight,
+        cycles: state.cycles
+      })
+    });
+    const json = await res.json();
+    showToast(json.status === 'ok' ? '✓ 시트 동기화 완료' : '동기화 실패: ' + json.message);
+  } catch(e) {
+    showToast('연결 실패. URL을 확인해 주세요.');
+  }
+}
+
+/* 시트 데이터 → 앱 불러오기 */
+async function loadFromSheets() {
+  if (!state.settings.sheetsUrl) { showToast('Sheets URL을 먼저 입력해 주세요'); return; }
+  showToast('불러오는 중...');
+  try {
+    const res  = await fetch(state.settings.sheetsUrl + '?action=GET_ALL');
+    const json = await res.json();
+    if (json.status !== 'ok') { showToast('불러오기 실패: ' + json.message); return; }
+    if (json.weight) state.weight = json.weight;
+    if (json.cycles) state.cycles = json.cycles;
+    saveLocal();
+    renderAll();
+    closeSettings();
+    showToast('✓ 시트에서 불러오기 완료');
+  } catch(e) {
+    showToast('연결 실패. URL을 확인해 주세요.');
+  }
+}
+
 function saveSettings() {
   state.settings.defaultCycleLen  = parseInt(document.getElementById('defCycleLen').value)  || 28;
   state.settings.defaultPeriodLen = parseInt(document.getElementById('defPeriodLen').value) || 5;
