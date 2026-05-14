@@ -92,13 +92,14 @@ function doPost(e) {
         return respond({ status: 'ok', message: data.id + ' 생리 기록 삭제됨' });
 
       case 'MEMO_SAVE':
-        saveMemoSheet(data.content || '', data.updatedAt || '');
+        if (!data.id) throw new Error('data.id 필수');
+        saveMemoSheet(data.id, data.content || '', data.updatedAt || '');
         return respond({ status: 'ok', message: '메모 저장됨' });
 
       case 'SYNC_ALL':
         syncAllWeight(body.weight || {});
         syncAllCycles(body.cycles || []);
-        if (body.memo) saveMemoSheet(body.memo.content || '', body.memo.updatedAt || '');
+        if (body.memo && body.memo.id) saveMemoSheet(body.memo.id, body.memo.content || '', body.memo.updatedAt || '');
         return respond({ status: 'ok', message: '전체 동기화 완료' });
 
       case 'GET_ALL':
@@ -330,54 +331,50 @@ function syncAllCycles(cyclesArr) {
 
 /* ════════════════════════════════════════
    MEMO 시트
-   단일 메모 — 키(A열)='memo' 행을 UPSERT
-   컬럼: 키 | 내용 | 수정일시
+   단일 메모 — UUID(A열)로 UPSERT
+   컬럼: uuid | memo | updated
 ════════════════════════════════════════ */
 function getOrCreateMemoSheet() {
   const ss  = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_MEMO);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_MEMO);
-    const h = ['키','내용','수정일시'];
+    const h = ['uuid','memo','updated'];
     sheet.getRange(1,1,1,h.length).setValues([h])
          .setBackground('#1a1a1a').setFontColor('#ffffff').setFontWeight('bold');
     sheet.setFrozenRows(1);
-    sheet.setColumnWidth(1,80);
+    sheet.setColumnWidth(1,280);
     sheet.setColumnWidth(2,420);
     sheet.setColumnWidth(3,160);
   }
   return sheet;
 }
 
-function saveMemoSheet(content, updatedAt) {
+function saveMemoSheet(id, content, updatedAt) {
   const sheet = getOrCreateMemoSheet();
   const ts    = updatedAt || Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
   const last  = sheet.getLastRow();
   if (last >= 2) {
-    const keys = sheet.getRange(2,1,last-1,1).getValues();
-    for (let i = 0; i < keys.length; i++) {
-      if (String(keys[i][0]).trim() === 'memo') {
+    const uuids = sheet.getRange(2,1,last-1,1).getValues();
+    for (let i = 0; i < uuids.length; i++) {
+      if (String(uuids[i][0]).trim() === id) {
         sheet.getRange(i+2, 2, 1, 2).setValues([[content, ts]]);
         SpreadsheetApp.flush();
         return;
       }
     }
   }
-  sheet.appendRow(['memo', content, ts]);
+  sheet.appendRow([id, content, ts]);
   SpreadsheetApp.flush();
 }
 
 function getMemo() {
   const sheet = getOrCreateMemoSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { content: '', updatedAt: '' };
+  if (last < 2) return { id: '', content: '', updatedAt: '' };
   const rows = sheet.getRange(2,1,last-1,3).getValues();
-  for (const r of rows) {
-    if (String(r[0]).trim() === 'memo') {
-      return { content: String(r[1]||''), updatedAt: String(r[2]||'') };
-    }
-  }
-  return { content: '', updatedAt: '' };
+  const r = rows[0];
+  return { id: String(r[0]||''), content: String(r[1]||''), updatedAt: String(r[2]||'') };
 }
 
 /* ════════════════════════════════════════

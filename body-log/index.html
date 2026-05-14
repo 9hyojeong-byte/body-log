@@ -609,7 +609,7 @@ let state = {
   weight:   {},
   cycles:   [],
   settings: {defaultCycleLen:28, defaultPeriodLen:5},
-  memo:     {content:'', updatedAt:''}
+  memo:     {id:'', content:'', updatedAt:''}
 };
 let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null;
 
@@ -1634,11 +1634,12 @@ function saveMemo() {
   const now = new Date();
   const updatedAt = now.getFullYear() + '.' + pad(now.getMonth()+1) + '.' + pad(now.getDate())
                   + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-  state.memo = { content, updatedAt };
+  if (!state.memo.id) state.memo.id = generateUUID();
+  state.memo = { id: state.memo.id, content, updatedAt };
   saveLocal();
   document.getElementById('memoUpdated').textContent = '마지막 수정: ' + updatedAt;
   showToast('메모 저장됨');
-  if (SHEETS_URL) syncSheets('MEMO_SAVE', null, { content, updatedAt });
+  if (SHEETS_URL) syncSheets('MEMO_SAVE', null, { id: state.memo.id, content, updatedAt });
 }
 
 function showToast(msg) {
