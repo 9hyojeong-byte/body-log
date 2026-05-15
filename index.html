@@ -435,6 +435,7 @@
         <div class="hl-item" data-hl="estro"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#2563eb"></span>에스트로겐</div>
         <div class="hl-item" data-hl="prog"      onclick="toggleHl(this)"><span class="hl-dot" style="background:#e53935"></span>프로게스테론</div>
         <div class="hl-item" data-hl="water"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#0d9488"></span>수분저류량 <span style="font-size:10px;color:var(--400)">(7일 지연)</span></div>
+        <div class="hl-item" data-hl="weight"    onclick="toggleHl(this)"><span class="hl-dot" style="background:#111"></span>체중</div>
         <div class="hl-item" data-hl="today"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#ec4899;width:2px;height:14px;border-radius:1px"></span>오늘</div>
         <div class="hl-item" data-hl="selected"  onclick="toggleHl(this)"><span class="hl-dot" style="background:#f59e0b;width:2px;height:14px;border-radius:1px"></span>선택</div>
       </div>
@@ -613,7 +614,7 @@
 
 /* ═══════════ 구글 시트 설정 ═══════════ */
 // Google Apps Script 웹 앱 URL — 여기에 직접 입력
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxlBgI7K8f1l_toefMhBwzuDNpj0VEwZSDRJN8U1aeocebv4UaHM7hNLW5c6Kl4KAyItQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxDqqCatL3Om8N53P8jLOxKVCfMsrTvr4PNzV-uSjDRimFbN33v-Z9JWpdBDhr0MQ7ctQ/exec';
 
 /* ═══════════ STATE ═══════════ */
 let state = {
@@ -623,7 +624,7 @@ let state = {
   memo:     {id:'', content:'', updatedAt:''}
 };
 let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null, trendDays=30;
-const hlVisible = { estro: true, prog: true, water: true, today: true, selected: true };
+const hlVisible = { estro: true, prog: true, water: true, weight: true, today: true, selected: true };
 
 /* ═══════════ INIT ═══════════ */
 window.addEventListener('DOMContentLoaded', async () => {
@@ -1275,6 +1276,50 @@ function renderHormoneGraph() {
   if (hlVisible.estro)  drawCurve(estroArr,   '#2563eb', 2.0);
   if (hlVisible.prog)   drawCurve(progestArr, '#e53935', 2.0);
   if (hlVisible.water)  drawCurve(water,      '#0d9488', 1.5);
+
+  // ── 체중 데이터 오버레이 ──
+  if (hlVisible.weight) {
+    const weightPoints = []; // { i, val }
+    for (let i = 0; i < daysInMonth; i++) {
+      const e = state.weight[datestrs[i]];
+      if (e && e.weight) weightPoints.push({ i, val: parseFloat(e.weight) });
+    }
+    if (weightPoints.length > 0) {
+      const wVals = weightPoints.map(p => p.val);
+      const wMin  = Math.min(...wVals);
+      const wMax  = Math.max(...wVals);
+      const wRange = Math.max(wMax - wMin, 3); // 최소 3kg 범위
+      const wPad   = wRange * 0.15;
+      const normW  = v => (v - (wMin - wPad)) / (wRange + wPad * 2);
+
+      // 점선 연결선
+      if (weightPoints.length > 1) {
+        ctx.beginPath();
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = 'rgba(17,17,17,0.4)';
+        ctx.lineWidth   = 1.5;
+        ctx.lineJoin    = 'round';
+        weightPoints.forEach((p, idx) => {
+          const x = xAt(p.i), y = yAt(normW(p.val));
+          idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 데이터 점
+      weightPoints.forEach(p => {
+        const x = xAt(p.i), y = yAt(normW(p.val));
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#111';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth   = 1.5;
+        ctx.stroke();
+      });
+    }
+  }
 
   // ── 오늘 마커 ──
   const todayFull = toYMD(new Date());
