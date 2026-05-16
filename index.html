@@ -191,7 +191,7 @@
     .sel-day-bar{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 14px;background:var(--50);border-radius:12px;border:1px solid var(--200);gap:10px}
     .sel-day-info{display:flex;flex-direction:column;gap:3px;min-width:0}
     .sel-day-date{font-size:13px;font-weight:600;color:var(--black)}
-    .sel-day-phase{font-size:11px;color:var(--500)}
+    .sel-day-phase{font-size:11px;color:var(--500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
     .sel-day-btn{display:flex;align-items:center;gap:5px;background:var(--black);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s}
     .sel-day-btn:hover{background:var(--800)}
     .hormone-phases{display:none}
@@ -1591,12 +1591,28 @@ function selectCalDay(ds) {
   const phaseText   = PHASE_LABEL[phase] || '일반';
   const hasEntry    = !!state.weight[ds];
 
-  document.getElementById('selDayDate').textContent  = fmtDateKo(new Date(ds)) + (hasEntry ? '  ·  기록 있음 ●' : '');
-  document.getElementById('selDayPhase').textContent = phaseText;
-  document.getElementById('selDayBtn').textContent   = '';
-  document.getElementById('selDayBtn').innerHTML     =
+  const entry      = state.weight[ds];
+  const weightStr  = entry && entry.weight ? '  ·  ' + entry.weight + ' kg' : '';
+  const memoStr    = entry && entry.memo   ? entry.memo : '';
+  const phaseEl    = document.getElementById('selDayPhase');
+
+  document.getElementById('selDayDate').textContent = fmtDateKo(new Date(ds)) + weightStr;
+  if (memoStr) {
+    phaseEl.textContent     = memoStr;
+    phaseEl.style.display   = '';
+    phaseEl.style.color     = 'var(--500)';
+    phaseEl.style.fontStyle = 'normal';
+  } else if (phaseText !== '일반') {
+    phaseEl.textContent     = phaseText;
+    phaseEl.style.display   = '';
+    phaseEl.style.color     = 'var(--400)';
+    phaseEl.style.fontStyle = 'italic';
+  } else {
+    phaseEl.style.display   = 'none';
+  }
+  document.getElementById('selDayBtn').innerHTML =
     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
-    + (hasEntry ? ' 수정' : ' 체중 기록');
+    + (hasEntry ? ' 수정' : ' 기록');
   bar.style.display = '';
 
   // 그래프 선택 마커 업데이트
