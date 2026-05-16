@@ -1592,7 +1592,7 @@ function selectCalDay(ds) {
   const hasEntry    = !!state.weight[ds];
 
   const entry      = state.weight[ds];
-  const weightStr  = entry && entry.weight ? '  ·  ' + entry.weight + ' kg' : '';
+  const weightStr  = entry && entry.weight ? '  ·  ' + entry.weight + ' kg  ●' : '';
   const memoStr    = entry && entry.memo   ? entry.memo : '';
   const phaseEl    = document.getElementById('selDayPhase');
 
