@@ -196,7 +196,7 @@
     .sel-day-btn:hover{background:var(--800)}
     .hormone-phases{display:none}
     .hormone-phase-seg{flex:1;text-align:center;font-size:8.5px;font-weight:500;padding:4px 2px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .hormone-legend{display:flex;gap:14px;flex-wrap:wrap}
+    .hormone-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
     .hl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--500);cursor:pointer;user-select:none;transition:opacity .15s}
     .hl-item.hl-off{opacity:.3;text-decoration:line-through}
     .hl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
@@ -438,15 +438,6 @@
       </div>
       <!-- 구간 레이블 -->
       <div class="hormone-phases" id="hormonePhases"></div>
-      <!-- 범례 -->
-      <div class="hormone-legend">
-        <div class="hl-item" data-hl="estro"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#2563eb"></span>에스트로겐</div>
-        <div class="hl-item" data-hl="prog"      onclick="toggleHl(this)"><span class="hl-dot" style="background:#e53935"></span>프로게스테론</div>
-        <div class="hl-item" data-hl="water"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#0d9488"></span>수분저류량 <span style="font-size:10px;color:var(--400)">(7일 지연)</span></div>
-        <div class="hl-item" data-hl="weight"    onclick="toggleHl(this)"><span class="hl-dot" style="background:#111"></span>체중</div>
-        <div class="hl-item" data-hl="today"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#ec4899;width:2px;height:14px;border-radius:1px"></span>오늘</div>
-        <div class="hl-item" data-hl="selected"  onclick="toggleHl(this)"><span class="hl-dot" style="background:#f59e0b;width:2px;height:14px;border-radius:1px"></span>선택</div>
-      </div>
       <div class="hormone-no-data" id="hormoneNoData" style="display:none">
         주기 탭에서 생리 시작일을 입력하면 그래프가 표시됩니다.
       </div>
@@ -461,6 +452,16 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           체중 기록
         </button>
+      </div>
+
+      <!-- 범례 -->
+      <div class="hormone-legend">
+        <div class="hl-item" data-hl="estro"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#2563eb"></span>에스트로겐</div>
+        <div class="hl-item" data-hl="prog"      onclick="toggleHl(this)"><span class="hl-dot" style="background:#e53935"></span>프로게스테론</div>
+        <div class="hl-item" data-hl="water"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#0d9488"></span>수분저류량 <span style="font-size:10px;color:var(--400)">(7일 지연)</span></div>
+        <div class="hl-item" data-hl="weight"    onclick="toggleHl(this)"><span class="hl-dot" style="background:#111"></span>체중</div>
+        <div class="hl-item" data-hl="today"     onclick="toggleHl(this)"><span class="hl-dot" style="background:#ec4899;width:2px;height:14px;border-radius:1px"></span>오늘</div>
+        <div class="hl-item" data-hl="selected"  onclick="toggleHl(this)"><span class="hl-dot" style="background:#f59e0b;width:2px;height:14px;border-radius:1px"></span>선택</div>
       </div>
     </div>
     <div class="card">
