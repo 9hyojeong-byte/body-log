@@ -253,6 +253,12 @@
     .btn-full{width:100%;margin-top:20px;padding:14px;border-radius:12px;background:var(--black);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s}
     .btn-full:hover{background:var(--800)}
 
+    /* ── LOADING BAR ── */
+    .loading-bar{position:fixed;top:0;left:0;right:0;height:3px;background:var(--200);z-index:500;opacity:0;transition:opacity .2s}
+    .loading-bar.show{opacity:1}
+    .loading-bar::after{content:'';position:absolute;top:0;left:0;height:100%;width:40%;background:var(--black);border-radius:0 2px 2px 0;animation:loading-slide 1.2s ease-in-out infinite}
+    @keyframes loading-slide{0%{left:-40%;width:40%}50%{width:60%}100%{left:100%;width:40%}}
+
     /* ── TOAST ── */
     .toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--black);color:#fff;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:500;opacity:0;transition:opacity .22s,transform .22s;z-index:300;white-space:nowrap;pointer-events:none}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -534,6 +540,7 @@
 
 </main>
 
+<div class="loading-bar" id="loadingBar"></div>
 <div class="toast" id="toast"></div>
 
 <nav class="bottom-nav">
@@ -637,6 +644,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function fetchFromSheets() {
+  const bar = document.getElementById('loadingBar');
+  bar.classList.add('show');
   try {
     const res = await fetch(SHEETS_URL + '?action=GET_ALL', { method:'GET', redirect:'follow' });
     if (!res.ok) return;
@@ -649,6 +658,8 @@ async function fetchFromSheets() {
     renderAll();
   } catch(e) {
     console.warn('시트 로드 실패, 로컬 데이터 사용:', e);
+  } finally {
+    bar.classList.remove('show');
   }
 }
 
