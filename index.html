@@ -164,8 +164,10 @@
     .c-ovul          .dtag{background:#4ade80;color:#166534}
     .c-fertile       .dtag{background:#dcfce7;color:#15803d}
     .c-premenstrual  .dtag{background:#f8bbd0;color:#880e4f}
-    /* weight dot */
-    .wdot{width:5px;height:5px;border-radius:50%;background:var(--black);margin-top:1px;flex-shrink:0}
+    /* weight / memo dots */
+    .dot-row{display:flex;gap:2px;justify-content:center;margin-top:1px}
+    .wdot{width:5px;height:5px;border-radius:50%;background:var(--black);flex-shrink:0}
+    .mdot{width:5px;height:5px;border-radius:50%;background:var(--400);flex-shrink:0}
     .c-ovul .wdot{background:#fff}
     .c-fertile .dn{color:#15803d}
     /* good-day ring (weight recorded on golden day) */
@@ -1437,6 +1439,7 @@ function renderCalendar() {
     const ep    = starts.has(ds) ? 'start' : phase;
     const isToday   = ds === today;
     const hasWeight = !!(state.weight[ds] && state.weight[ds].weight);
+    const hasMemo   = !!(state.weight[ds] && state.weight[ds].memo);
     const isGolden  = ep === 'golden';
 
     const el = document.createElement('div');
@@ -1456,8 +1459,11 @@ function renderCalendar() {
     if (ep && TAGS[ep]) {
       const t = document.createElement('div'); t.className='dtag'; t.textContent=TAGS[ep]; el.appendChild(t);
     }
-    if (hasWeight) {
-      const dot = document.createElement('div'); dot.className='wdot'; el.appendChild(dot);
+    if (hasWeight || hasMemo) {
+      const row = document.createElement('div'); row.className='dot-row';
+      if (hasWeight) { const d = document.createElement('div'); d.className='wdot'; row.appendChild(d); }
+      if (hasMemo)   { const d = document.createElement('div'); d.className='mdot'; row.appendChild(d); }
+      el.appendChild(row);
     }
     el.addEventListener('click', () => selectCalDay(ds));
     grid.appendChild(el);
