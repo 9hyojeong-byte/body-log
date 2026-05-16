@@ -213,8 +213,8 @@
     /* ── HISTORY LIST ── */
     .history-list{display:flex;flex-direction:column}
     .h-item{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--50)}
-    .h-item.min-weight{background:#f0fdf4;margin:0 -16px;padding:13px 16px;border-radius:10px;border-bottom-color:transparent}
-    .h-item.min-weight .h-weight{color:#15803d}
+    .h-item.min-weight{background:#fffbeb;margin:0 -16px;padding:13px 16px;border-radius:10px;border-bottom-color:transparent}
+    .h-item.min-weight .h-weight{color:#b45309}
     .h-item:last-child{border-bottom:none}
     .h-date{font-size:13px;font-weight:500;color:var(--black)}
     .h-meta{font-size:11px;color:var(--500);margin-top:2px}
@@ -1523,7 +1523,7 @@ function renderLog() {
       + '<div class="h-meta">' + [e.waist?'허리 '+e.waist+'cm':'', e.thigh?'허벅지 '+e.thigh+'cm':'', e.bodyfat?'체지방 '+e.bodyfat+'%':'', e.memo?'"'+e.memo+'"':''].filter(Boolean).join(' · ') + '</div>'
       + '</div>'
       + '<div style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="openEntry(\''+d+'\')">'
-      + (e.weight ? '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>' + (minW && e.weight === minW ? ' <span style="font-size:9px;background:#dcfce7;color:#15803d;border-radius:4px;padding:2px 5px;font-weight:600">최저</span>' : '') : '<span class="h-weight" style="font-size:20px">—</span>')
+      + (e.weight ? '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>' : '<span class="h-weight" style="font-size:20px">—</span>')
       + '</div>';
     list.appendChild(row);
   });
