@@ -340,7 +340,7 @@
         <div class="if-memo-row">
           <input type="text" id="ifMemo" placeholder="메모 (컨디션, 식단 등)"/>
         </div>
-        <button class="if-save-btn" onclick="saveInlineEntry()">오늘 체중 저장</button>
+        <button class="if-save-btn" onclick="saveInlineEntry()">오늘 기록 저장</button>
       </div>
 
       <!-- 기록 완료 뷰 -->
@@ -755,8 +755,9 @@ function closeEntry() { document.getElementById('entryOverlay').classList.remove
 function closeEntryOutside(e) { if (e.target===document.getElementById('entryOverlay')) closeEntry(); }
 
 function saveEntry() {
-  const w = parseFloat(document.getElementById('fWeight').value);
-  if (!w) { showToast('체중을 입력해 주세요'); return; }
+  const w = parseFloat(document.getElementById('fWeight').value) || null;
+  const memo = document.getElementById('fMemo').value.trim();
+  if (!w && !memo) { showToast('체중 또는 메모를 입력해 주세요'); return; }
   const existingId = state.weight[modalDate] && state.weight[modalDate].id;
   state.weight[modalDate] = {
     id:      existingId || generateUUID(),
@@ -764,7 +765,7 @@ function saveEntry() {
     waist:   parseFloat(document.getElementById('fWaist').value)   || null,
     thigh:   parseFloat(document.getElementById('fThigh').value)   || null,
     bodyfat: parseFloat(document.getElementById('fBodyfat').value) || null,
-    memo:    document.getElementById('fMemo').value.trim()
+    memo:    memo
   };
   saveLocal(); closeEntry(); renderAll(); showToast('저장 완료');
   if (SHEETS_URL) syncSheets('WEIGHT', modalDate, state.weight[modalDate]);
@@ -777,8 +778,9 @@ function deleteEntry() {
 
 /* Inline home form */
 function saveInlineEntry() {
-  const w = parseFloat(document.getElementById('ifWeight').value);
-  if (!w) { showToast('체중을 입력해 주세요'); return; }
+  const w = parseFloat(document.getElementById('ifWeight').value) || null;
+  const memo = document.getElementById('ifMemo').value.trim();
+  if (!w && !memo) { showToast('체중 또는 메모를 입력해 주세요'); return; }
   const existingId = state.weight[todayStr] && state.weight[todayStr].id;
   state.weight[todayStr] = {
     id:      existingId || generateUUID(),
@@ -786,7 +788,7 @@ function saveInlineEntry() {
     waist:   parseFloat(document.getElementById('ifWaist').value) || null,
     thigh:   parseFloat(document.getElementById('ifThigh').value) || null,
     bodyfat: null,
-    memo:    document.getElementById('ifMemo').value.trim()
+    memo:    memo
   };
   saveLocal(); renderAll(); showToast('저장 완료 ✓');
   if (SHEETS_URL) syncSheets('WEIGHT', todayStr, state.weight[todayStr]);
@@ -937,7 +939,7 @@ function renderHome() {
     form.style.display      = 'none';
     form.classList.remove('expanded');
     logged.style.display    = '';
-    document.getElementById('tlWeight').innerHTML = entry.weight + '<em>kg</em>';
+    document.getElementById('tlWeight').innerHTML = entry.weight ? entry.weight + '<em>kg</em>' : '—';
     const meta = [
       entry.waist   ? '허리 '   + entry.waist   + 'cm' : '',
       entry.thigh   ? '허벅지 ' + entry.thigh   + 'cm' : '',
@@ -976,7 +978,7 @@ function renderHome() {
 
     // 이번달 기록 수
     const nowM = now.getFullYear() + '-' + pad(now.getMonth()+1);
-    const thisMW = allE.filter(([d]) => d.startsWith(nowM)).map(([,e]) => e.weight);
+    const thisMW = allE.filter(([d,e]) => d.startsWith(nowM) && e.weight).map(([,e]) => e.weight);
     document.getElementById('statCount').textContent = thisMW.length;
 
     // 주기별 황금기 평균 계산 [최신순]
@@ -998,7 +1000,7 @@ function renderHome() {
         const dt = new Date(start); dt.setDate(start.getDate()+d);
         const ds = toYMD(dt);
         if (ds > todayStr) continue;
-        if (state.weight[ds]) goldenDays.push(state.weight[ds].weight);
+        if (state.weight[ds] && state.weight[ds].weight) goldenDays.push(state.weight[ds].weight);
       }
       if (goldenDays.length) {
         const avg = goldenDays.reduce((a,b)=>a+b,0)/goldenDays.length;
@@ -1038,7 +1040,7 @@ function renderHome() {
       + '<div class="h-meta">' + [e.waist?'허리 '+e.waist+'cm':'', e.thigh?'허벅지 '+e.thigh+'cm':'', e.bodyfat?'체지방 '+e.bodyfat+'%':''].filter(Boolean).join(' · ') + '</div>'
       + '</div>'
       + '<div style="cursor:pointer;text-align:right" onclick="openEntry(\''+d+'\')">'
-      + '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>'
+      + (e.weight ? '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>' : '<span class="h-weight" style="font-size:20px">—</span>')
       + '</div>';
     rl.appendChild(row);
   });
@@ -1055,7 +1057,7 @@ function setTrendPeriod(days, btn) {
 
 function renderTrend(allE) {
   const card = document.getElementById('trendCard');
-  const data = allE.filter(([d]) => (new Date()-new Date(d))/86400000 <= trendDays)
+  const data = allE.filter(([d,e]) => (new Date()-new Date(d))/86400000 <= trendDays && e.weight)
                    .sort((a,b) => a[0] > b[0] ? 1 : -1);
   if (data.length < 2) { card.style.display='none'; return; }
   card.style.display = '';
@@ -1423,7 +1425,7 @@ function renderCalendar() {
     const phase = getPhase(ds);
     const ep    = starts.has(ds) ? 'start' : phase;
     const isToday   = ds === today;
-    const hasWeight = !!state.weight[ds];
+    const hasWeight = !!(state.weight[ds] && state.weight[ds].weight);
     const isGolden  = ep === 'golden';
 
     const el = document.createElement('div');
@@ -1478,7 +1480,7 @@ function renderLog() {
       + '<div class="h-meta">' + [e.waist?'허리 '+e.waist+'cm':'', e.thigh?'허벅지 '+e.thigh+'cm':'', e.bodyfat?'체지방 '+e.bodyfat+'%':'', e.memo?'"'+e.memo+'"':''].filter(Boolean).join(' · ') + '</div>'
       + '</div>'
       + '<div style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="openEntry(\''+d+'\')">'
-      + '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>'
+      + (e.weight ? '<span class="h-weight">'+e.weight+'</span><span class="h-unit">kg</span>' : '<span class="h-weight" style="font-size:20px">—</span>')
       + '</div>';
     list.appendChild(row);
   });
