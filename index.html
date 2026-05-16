@@ -39,6 +39,14 @@
     /* ── CARD ── */
     .card{background:var(--card);border-radius:18px;border:1px solid var(--border);padding:20px}
     .card-label{font-size:10px;font-weight:500;color:var(--400);letter-spacing:.13em;text-transform:uppercase;margin-bottom:14px}
+    .card-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .card-label-row .card-label{margin-bottom:0}
+    .sw-wrap{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+    .sw-wrap span{font-size:11px;font-weight:500;color:var(--500)}
+    .sw{width:34px;height:20px;border-radius:100px;background:var(--200);position:relative;transition:background .2s;flex-shrink:0}
+    .sw::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s}
+    .sw.on{background:var(--black)}
+    .sw.on::after{transform:translateX(14px)}
 
     /* ══════════════════════════════
        HOME — TODAY CARD
@@ -485,7 +493,7 @@
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
           <div style="width:18px;height:18px;border-radius:4px;background:var(--white);border:2.5px solid #ec4899;flex-shrink:0;margin-top:1px"></div>
-          <span><b style="color:#7c3aed;font-weight:500">보라 테두리</b> — 오늘 날짜</span>
+          <span><b style="color:#7c3aed;font-weight:500">분홍 테두리</b> — 오늘 날짜</span>
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--500)">
           <div style="width:18px;height:18px;border-radius:50%;background:var(--black);flex-shrink:0;margin-top:1px"></div>
@@ -498,7 +506,13 @@
   <!-- ══ LOG ══ -->
   <div class="section" id="sec-log">
     <div class="card">
-      <div class="card-label">전체 기록</div>
+      <div class="card-label-row">
+        <div class="card-label">전체 기록</div>
+        <div class="sw-wrap" onclick="toggleGoldenFilter()">
+          <span id="goldenFilterLabel">황금기만 보기</span>
+          <div class="sw" id="goldenFilterSw"></div>
+        </div>
+      </div>
       <div class="history-list" id="fullList">
         <div class="empty-state">아직 기록이 없어요</div>
       </div>
@@ -633,7 +647,7 @@ let state = {
   settings: {defaultCycleLen:28, defaultPeriodLen:5},
   memo:     {id:'', content:'', updatedAt:''}
 };
-let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null, trendDays=30;
+let calYear, calMonth, modalDate=null, todayStr='', selectedCalDay=null, trendDays=30, logGoldenOnly=false;
 const hlVisible = { estro: true, prog: true, water: true, weight: true, today: true, selected: true };
 
 /* ═══════════ INIT ═══════════ */
@@ -1472,10 +1486,17 @@ function renderCalendar() {
 }
 
 /* ═══════════ LOG TAB ═══════════ */
+function toggleGoldenFilter() {
+  logGoldenOnly = !logGoldenOnly;
+  document.getElementById('goldenFilterSw').classList.toggle('on', logGoldenOnly);
+  renderLog();
+}
+
 function renderLog() {
   const list = document.getElementById('fullList');
-  const all  = Object.entries(state.weight).sort((a,b) => a[0]<b[0] ? 1 : -1);
-  if (!all.length) { list.innerHTML='<div class="empty-state">아직 기록이 없어요</div>'; return; }
+  let all = Object.entries(state.weight).sort((a,b) => a[0]<b[0] ? 1 : -1);
+  if (logGoldenOnly) all = all.filter(([d]) => getPhase(d) === 'golden');
+  if (!all.length) { list.innerHTML='<div class="empty-state">'+(logGoldenOnly ? '황금기 기록이 없어요' : '아직 기록이 없어요')+'</div>'; return; }
   list.innerHTML = '';
   const PHASE_TAG_STYLE = {
     start:        'background:var(--black);color:#fff',
