@@ -64,7 +64,7 @@ function doPost(e) {
     switch (action) {
 
       case 'WEIGHT':
-        if (!date || !data.weight) throw new Error('date, data.weight 필수');
+        if (!date || (!data.weight && !data.memo)) throw new Error('date 및 체중 또는 메모 필수');
         upsertWeight(date, data);
         return respond({ status: 'ok', message: date + ' 체중 저장됨' });
 

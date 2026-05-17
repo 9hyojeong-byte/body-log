@@ -65,6 +65,11 @@
     .pb-bad{background:#fce4ec;color:#880e4f}
     .pb-caution{background:var(--150);color:var(--700)}
     .pb-neutral{background:var(--100);color:var(--600)}
+    .today-water-col{padding:14px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-left:1px solid var(--border);flex-shrink:0}
+    .water-bar-wrap{width:8px;height:56px;background:var(--150);border-radius:4px;overflow:hidden;position:relative}
+    .water-bar-fill{position:absolute;bottom:0;left:0;right:0;background:#0d9488;border-radius:4px;transition:height .4s ease}
+    .water-pct-num{font-size:12px;font-weight:700;color:var(--700)}
+    .water-pct-label{font-size:9px;color:var(--400);letter-spacing:.3px;text-align:center}
     .cycle-desc{font-size:13px;color:var(--700);line-height:1.45}
     .cycle-next{font-size:11px;color:var(--400);margin-top:1px}
 
@@ -299,7 +304,7 @@
 <body>
 
 <header>
-  <h1>Body <em>log</em></h1>
+  <h1 id="appLogo" onclick="handleLogoClick()">Body <em>log</em></h1>
   <button class="hdr-btn" onclick="openSettings()" aria-label="설정">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
   </button>
@@ -323,6 +328,13 @@
           <div class="phase-badge pb-neutral" id="tdPhaseBadge">—</div>
           <div class="cycle-desc"  id="tdCycleDesc"></div>
           <div class="cycle-next"  id="tdCycleNext"></div>
+        </div>
+        <div class="today-water-col" id="tdWaterCol">
+          <div class="water-bar-wrap">
+            <div class="water-bar-fill" id="tdWaterFill" style="height:0%"></div>
+          </div>
+          <div class="water-pct-num" id="tdWaterPct">—</div>
+          <div class="water-pct-label">수분저류</div>
         </div>
       </div>
 
@@ -640,7 +652,7 @@
 
 /* ═══════════ 구글 시트 설정 ═══════════ */
 // Google Apps Script 웹 앱 URL — 여기에 직접 입력
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxDqqCatL3Om8N53P8jLOxKVCfMsrTvr4PNzV-uSjDRimFbN33v-Z9JWpdBDhr0MQ7ctQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwbPxpsXRjNbezl4DfujNRfZXNNYvJE-Fi2j0Ghlp4Uj0akWbGN-DjMX2mjiUM7mzYzRQ/exec';
 
 /* ═══════════ STATE ═══════════ */
 let state = {
@@ -661,6 +673,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderAll();
   if (SHEETS_URL) await fetchFromSheets(); // 시트에서 최신 데이터 로드
 });
+
+let _logoClickCount = 0, _logoClickTimer = null;
+function handleLogoClick() {
+  _logoClickCount++;
+  clearTimeout(_logoClickTimer);
+  _logoClickTimer = setTimeout(() => { _logoClickCount = 0; }, 500);
+  if (_logoClickCount >= 3) {
+    _logoClickCount = 0;
+    window.open('https://docs.google.com/spreadsheets/d/1D0oFQaOseV3ysfqiNTDfwfP7ryoLG3gdWcGI69YjGKg/edit?gid=1405508932#gid=1405508932', '_blank');
+  }
+}
 
 async function fetchFromSheets() {
   const bar = document.getElementById('loadingBar');
@@ -919,6 +942,46 @@ const REC = {
   fertile:      {cls:'rb-neutral', icon:'ℹ', title:'가임 기간이에요',                    desc:'약간의 체중 변화가 있을 수 있어요.'},
 };
 
+function calcTodayWaterPct() {
+  const sorted = getSortedCycles();
+  if (!sorted.length) return null;
+  const cl = avgCycleLen();
+  const pl = state.settings.defaultPeriodLen;
+  const ovDay = Math.round(cl / 2) - 2;
+
+  function _hormone(dic) {
+    const e1 = 0.95 * Math.exp(-Math.pow(dic - (ovDay - 1), 2) / (2 * Math.pow(cl * 0.09, 2)));
+    const e2 = 0.45 * Math.exp(-Math.pow(dic - (ovDay + Math.round(cl * 0.22)), 2) / (2 * Math.pow(cl * 0.10, 2)));
+    const eBase = 0.08 + (dic < pl ? -0.05 * (1 - dic / pl) : 0);
+    const estro = Math.max(0.04, Math.min(1.0, e1 + e2 + eBase));
+    const lutealPeak = ovDay + Math.round(cl * 0.22);
+    const p1 = 0.92 * Math.exp(-Math.pow(dic - lutealPeak, 2) / (2 * Math.pow(cl * 0.11, 2)));
+    const prog = Math.max(0.03, Math.min(1.0, p1 + 0.04));
+    return { estro, prog };
+  }
+
+  const today = new Date(todayStr);
+  const last  = new Date(sorted[0].start);
+  let diff = Math.floor((today - last) / 86400000);
+  if (diff < 0) diff += cl * Math.ceil(-diff / cl);
+  const todayDic = diff % cl;
+
+  const DELAY = 7;
+  // 전체 주기 기준 min/max 계산
+  const fullRaw = [];
+  for (let d = 0; d < cl; d++) {
+    const d7 = ((d - DELAY) % cl + cl) % cl;
+    const h  = _hormone(d7);
+    fullRaw.push(h.estro + h.prog);
+  }
+  const wMin = Math.min(...fullRaw);
+  const wMax = Math.max(...fullRaw);
+
+  const dic7   = ((todayDic - DELAY) % cl + cl) % cl;
+  const hToday = _hormone(dic7);
+  return Math.round(((hToday.estro + hToday.prog) - wMin) / (wMax - wMin + 0.001) * 100);
+}
+
 function renderHome() {
   const now   = new Date();
   todayStr    = toYMD(now);
@@ -948,6 +1011,17 @@ function renderHome() {
   const nxt = nextPeriodDate();
   document.getElementById('tdCycleNext').textContent =
     (nxt && state.cycles.length) ? '다음 생리 예정 ' + fmtDateKo(nxt) : '';
+
+  /* 수분저류 확률 */
+  const waterPct = calcTodayWaterPct();
+  const waterCol = document.getElementById('tdWaterCol');
+  if (waterPct !== null) {
+    waterCol.style.display = '';
+    document.getElementById('tdWaterPct').textContent = waterPct + '%';
+    document.getElementById('tdWaterFill').style.height = waterPct + '%';
+  } else {
+    waterCol.style.display = 'none';
+  }
 
   /* 추천 배너 */
   const rec = REC[phase] || {cls:'rb-neutral', icon:'○', title:'오늘 체중을 기록해보세요', desc:'꾸준한 기록이 정확한 추세를 만들어요.'};
